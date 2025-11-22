@@ -11,7 +11,7 @@ type Props = TextInputProps & {
 };
 
 export default function CustomInput({ label, required, value, onChangeText, ...rest }: Props) {
-  const showError = required;
+  const showError = required && value.trim() === '';
 
   return (
     <View style={styles.wrapper}>
