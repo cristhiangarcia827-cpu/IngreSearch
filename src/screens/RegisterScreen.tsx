@@ -5,8 +5,7 @@ import {
   Alert, 
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
-  Text // Asegurarse de que Text esté importado
+  Platform
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,8 +13,9 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
-import { validateField, isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
+import { isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
 import { colors } from '../theme/colors';
+import { supabase } from '../lib/supabase';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
@@ -48,36 +48,44 @@ export default function RegisterScreen() {
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Validación en tiempo real después de que el campo fue tocado
     if (touched[field as keyof typeof touched]) {
-      let validation;
-      
-      if (field === 'confirmPassword') {
-        validation = doPasswordsMatch(formData.password, value);
-      } else {
-        validation = validateField(field, value);
-      }
-      
-      setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+      validateField(field, value);
     }
+  };
+
+  const validateField = (field: string, value?: string) => {
+    const currentValue = value !== undefined ? value : formData[field as keyof typeof formData];
+    let validation;
+
+    switch (field) {
+      case 'name':
+        validation = isRequired(currentValue);
+        break;
+      case 'email':
+        validation = isEmailValid(currentValue);
+        break;
+      case 'password':
+        validation = isStrongPassword(currentValue);
+        break;
+      case 'confirmPassword':
+        validation = doPasswordsMatch(formData.password, currentValue);
+        break;
+      default:
+        validation = isRequired(currentValue);
+    }
+
+    setErrors(prev => ({ 
+      ...prev, 
+      [field]: validation.message || '' 
+    }));
   };
 
   const handleFieldBlur = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
-    let validation;
-    
-    if (field === 'confirmPassword') {
-      validation = doPasswordsMatch(formData.password, formData.confirmPassword);
-    } else {
-      validation = validateField(field, formData[field as keyof typeof formData]);
-    }
-    
-    setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+    validateField(field);
   };
 
   const validateFormData = () => {
-    // Marcar todos los campos como tocados
     const newTouched = {
       name: true,
       email: true,
@@ -86,43 +94,24 @@ export default function RegisterScreen() {
     };
     setTouched(newTouched);
 
-    // Validación manual de cada campo
-    const newErrors = {
-      name: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    };
+    Object.keys(formData).forEach(field => {
+      validateField(field);
+    });
 
-    // Validar nombre
-    const nameValidation = isRequired(formData.name);
-    if (!nameValidation.isValid) {
-      newErrors.name = nameValidation.message || '';
-    }
-
-    // Validar email
-    const emailValidation = isEmailValid(formData.email);
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.message || '';
-    }
-
-    // Validar contraseña
-    const passwordValidation = isStrongPassword(formData.password);
-    if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.message || '';
-    }
-
-    // Validar confirmación de contraseña
-    const confirmValidation = doPasswordsMatch(formData.password, formData.confirmPassword);
-    if (!confirmValidation.isValid) {
-      newErrors.confirmPassword = confirmValidation.message || '';
-    }
-
-    setErrors(newErrors);
-
-    // Verificar si no hay errores
-    const isValid = Object.values(newErrors).every(error => error === '');
+    const isValid = Object.values(errors).every(error => error === '');
     return isValid;
+  };
+
+  // Función simple para hashear (en producción usa algo más seguro)
+  const simpleHash = (password: string): string => {
+    // Esto es solo para demostración - NO USAR EN PRODUCCIÓN
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36);
   };
 
   const handleRegister = async () => {
@@ -136,11 +125,52 @@ export default function RegisterScreen() {
 
     setLoading(true);
 
-    // Simular proceso de registro (aquí iría la llamada a tu API)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Registro exitoso
+      console.log('Iniciando registro para:', formData.email);
+
+      // 1. Primero verificar si el usuario ya existe
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', formData.email)
+        .single();
+
+      if (existingUser) {
+        Alert.alert('Error', 'Este email ya está registrado.');
+        setLoading(false);
+        return;
+      }
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 significa "no encontrado", lo cual es bueno
+        console.error('Error al verificar usuario:', checkError);
+      }
+
+      // 2. Hashear la contraseña
+      const passwordHash = simpleHash(formData.password);
+      console.log('Contraseña hasheada');
+
+      // 3. Insertar el nuevo usuario en la tabla
+      const { data, error } = await supabase
+        .from('users')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            password_hash: passwordHash,
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error al registrar usuario:', error);
+        Alert.alert('Error', `No se pudo crear la cuenta: ${error.message}`);
+        return;
+      }
+
+      console.log('Usuario registrado exitosamente:', data);
+
+      // 4. Registro exitoso
       Alert.alert(
         'Registro exitoso', 
         'Tu cuenta ha sido creada correctamente.',
@@ -151,11 +181,10 @@ export default function RegisterScreen() {
           }
         ]
       );
+
     } catch (error) {
-      Alert.alert(
-        'Error', 
-        'No se pudo crear la cuenta. Inténtalo de nuevo.'
-      );
+      console.error('Error en registro:', error);
+      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }

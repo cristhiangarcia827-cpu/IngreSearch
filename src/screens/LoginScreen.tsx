@@ -14,8 +14,9 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
-import { validateField, isRequired, isEmailValid } from '../utils/validation';
+import { isRequired, isEmailValid } from '../utils/validation';
 import { colors } from '../theme/colors';
+import { supabase } from '../lib/supabase';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
@@ -44,16 +45,34 @@ export default function LoginScreen() {
     
     // Validación en tiempo real después de que el campo fue tocado
     if (touched[field as keyof typeof touched]) {
-      const validation = validateField(field, value);
-      setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+      validateField(field, value);
     }
+  };
+
+  const validateField = (field: string, value?: string) => {
+    const currentValue = value !== undefined ? value : formData[field as keyof typeof formData];
+    let validation;
+
+    switch (field) {
+      case 'email':
+        validation = isEmailValid(currentValue);
+        break;
+      case 'password':
+        validation = isRequired(currentValue);
+        break;
+      default:
+        validation = isRequired(currentValue);
+    }
+
+    setErrors(prev => ({ 
+      ...prev, 
+      [field]: validation.message || '' 
+    }));
   };
 
   const handleFieldBlur = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
-    const validation = validateField(field, formData[field as keyof typeof formData]);
-    setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+    validateField(field);
   };
 
   const validateFormData = () => {
@@ -64,29 +83,25 @@ export default function LoginScreen() {
     };
     setTouched(newTouched);
 
-    // Validación manual de cada campo
-    const newErrors = {
-      email: '',
-      password: '',
-    };
-
-    // Validar email
-    const emailValidation = isEmailValid(formData.email);
-    if (!emailValidation.isValid) {
-      newErrors.email = emailValidation.message || '';
-    }
-
-    // Validar contraseña
-    const passwordValidation = isRequired(formData.password);
-    if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.message || '';
-    }
-
-    setErrors(newErrors);
+    // Validar todos los campos
+    Object.keys(formData).forEach(field => {
+      validateField(field);
+    });
 
     // Verificar si no hay errores
-    const isValid = Object.values(newErrors).every(error => error === '');
+    const isValid = Object.values(errors).every(error => error === '');
     return isValid;
+  };
+
+  // Función simple para hashear (debe ser la misma que en RegisterScreen)
+  const simpleHash = (password: string): string => {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
   };
 
   const handleLogin = async () => {
@@ -100,14 +115,43 @@ export default function LoginScreen() {
 
     setLoading(true);
 
-    // Simular proceso de login (aquí iría la llamada a tu API)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Login exitoso
+      console.log('Iniciando login para:', formData.email);
+
+      // 1. Hashear la contraseña para comparar con la base de datos
+      const passwordHash = simpleHash(formData.password);
+
+      // 2. Buscar usuario en la base de datos
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('id, name, email, password_hash')
+        .eq('email', formData.email)
+        .eq('password_hash', passwordHash)
+        .single();
+
+      if (error) {
+        console.error('Error al buscar usuario:', error);
+        
+        if (error.code === 'PGRST116') {
+          // Usuario no encontrado
+          Alert.alert('Error', 'Email o contraseña incorrectos.');
+        } else {
+          Alert.alert('Error', 'Ocurrió un error al iniciar sesión.');
+        }
+        return;
+      }
+
+      if (!user) {
+        Alert.alert('Error', 'Email o contraseña incorrectos.');
+        return;
+      }
+
+      console.log('Login exitoso para:', user.name);
+
+      // 3. Login exitoso
       Alert.alert(
         '¡Bienvenido!', 
-        'Has iniciado sesión correctamente.',
+        `Hola ${user.name}, has iniciado sesión correctamente.`,
         [
           { 
             text: 'OK', 
@@ -115,14 +159,27 @@ export default function LoginScreen() {
           }
         ]
       );
+
     } catch (error) {
-      Alert.alert(
-        'Error', 
-        'No se pudo iniciar sesión. Verifica tus credenciales.'
-      );
+      console.error('Error en login:', error);
+      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Recuperar Contraseña',
+      'Se enviará un enlace de recuperación a tu email.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Enviar', onPress: () => {
+          // Aquí iría la lógica para recuperar contraseña
+          Alert.alert('Éxito', 'Se ha enviado el enlace de recuperación a tu email.');
+        }}
+      ]
+    );
   };
 
   const hasErrors = Object.values(errors).some(error => error !== '');
@@ -175,6 +232,14 @@ export default function LoginScreen() {
             disabled={hasErrors}
             loading={loading}
             style={styles.loginButton}
+          />
+
+          <CustomButton
+            text="¿Olvidaste tu contraseña?"
+            onPress={handleForgotPassword}
+            variant="text"
+            fullWidth={false}
+            style={styles.forgotButton}
           />
 
           <View style={styles.separator}>
