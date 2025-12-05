@@ -102,9 +102,9 @@ export default function RegisterScreen() {
     return isValid;
   };
 
-  // Función simple para hashear (en producción usa algo más seguro)
+  // Función simple para hashear
   const simpleHash = (password: string): string => {
-    // Esto es solo para demostración - NO USAR EN PRODUCCIÓN
+    // Esto es solo para demostración
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
       const char = password.charCodeAt(i);

@@ -42,18 +42,6 @@ export default function HomeScreen() {
         color={themeColor}
       />
       <Image source={require('../assets/images/dish.png')} style={styles.image} />
-      <CustomInput
-        label="Ingredientes"
-        placeholder="Ej: tomate, arroz, huevo"
-        value={ingredients}
-        onChangeText={(text) => dispatch(setIngredients(text))}
-        required
-      />
-      <CustomButton
-        text="Buscar recetas"
-        onPress={handleSearch}
-        variant={mode === 'ahorro' ? 'savings' : 'primary'}
-      />
       <View style={styles.list}>
         {filterRecipes(RECIPES, ingredients, mode).map(recipe => (
           <RecipeCard

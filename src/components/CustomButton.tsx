@@ -33,7 +33,7 @@ export default function CustomButton({
   textStyle,
   fullWidth = true
 }: Props) {
-  // Función para obtener el color basado en la variante
+
   const getVariantColor = (): string => {
     switch (variant) {
       case 'savings':

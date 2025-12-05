@@ -1,18 +1,26 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity,
+  ViewStyle 
+} from 'react-native';
 import { colors } from '../theme/colors';
 
 type Props = {
   title: string;
   priceTag: 'bajo' | 'medio' | 'alto';
   onPress: () => void;
+  style?: ViewStyle;
 };
 
-export default function RecipeCard({ title, priceTag, onPress }: Props) {
-  const tagColor = priceTag === 'bajo' ? colors.savingsPrimary : priceTag === 'medio' ? colors.primary : '#8A2BE2';
+export default function RecipeCard({ title, priceTag, onPress, style }: Props) {
+  const tagColor = priceTag === 'bajo' ? colors.savingsPrimary : 
+                   priceTag === 'medio' ? colors.primary : '#8A2BE2';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
+    <TouchableOpacity style={[styles.card, style]} onPress={onPress}>
       <View style={[styles.tag, { backgroundColor: tagColor }]} />
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
@@ -22,16 +30,15 @@ export default function RecipeCard({ title, priceTag, onPress }: Props) {
   );
 }
 
-
 const styles = StyleSheet.create({
   card: { 
-    flexDirection: 'row' as 'row', 
+    flexDirection: 'row', 
     padding: 12, 
     borderWidth: 1, 
     borderColor: '#eee', 
     borderRadius: 8, 
     marginBottom: 8, 
-    alignItems: 'center' as 'center',
+    alignItems: 'center',
     backgroundColor: '#ffffff'
   },
   tag: { 
@@ -44,7 +51,7 @@ const styles = StyleSheet.create({
     flex: 1 
   },
   title: { 
-    fontWeight: '600' as '600', 
+    fontWeight: '600', 
     fontSize: 16, 
     marginBottom: 4 
   },
