@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useDispatch } from 'react-redux';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
@@ -16,11 +17,14 @@ import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
 import { colors } from '../theme/colors';
 import { supabase } from '../lib/supabase';
+import { setCurrentUser } from '../store/slices/uiSlice';
+import type { AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavProp>();
+  const dispatch = useDispatch<AppDispatch>();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -102,14 +106,13 @@ export default function RegisterScreen() {
     return isValid;
   };
 
-  // Función simple para hashear
+  // Función simple para hashear (debe ser la misma que en LoginScreen)
   const simpleHash = (password: string): string => {
-    // Esto es solo para demostración
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
       const char = password.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
+      hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
   };
@@ -170,10 +173,19 @@ export default function RegisterScreen() {
 
       console.log('Usuario registrado exitosamente:', data);
 
-      // 4. Registro exitoso
+      // 4. Guardar usuario en Redux
+      if (data && data[0]) {
+        dispatch(setCurrentUser({
+          id: data[0].id,
+          name: formData.name,
+          email: formData.email
+        }));
+      }
+
+      // 5. Registro exitoso
       Alert.alert(
         'Registro exitoso', 
-        'Tu cuenta ha sido creada correctamente.',
+        `Hola ${formData.name}, tu cuenta ha sido creada correctamente.`,
         [
           { 
             text: 'OK', 

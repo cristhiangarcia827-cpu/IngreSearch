@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useDispatch } from 'react-redux';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
@@ -17,11 +18,14 @@ import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid } from '../utils/validation';
 import { colors } from '../theme/colors';
 import { supabase } from '../lib/supabase';
+import { setCurrentUser } from '../store/slices/uiSlice';
+import type { AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavProp>();
+  const dispatch = useDispatch<AppDispatch>();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -148,7 +152,14 @@ export default function LoginScreen() {
 
       console.log('Login exitoso para:', user.name);
 
-      // 3. Login exitoso
+      // 3. Guardar usuario en Redux
+      dispatch(setCurrentUser({
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }));
+
+      // 4. Login exitoso
       Alert.alert(
         '¡Bienvenido!', 
         `Hola ${user.name}, has iniciado sesión correctamente.`,

@@ -8,7 +8,7 @@ import {
   Platform,
   Text 
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SectionTitle from '../components/SectionTitle';
@@ -16,18 +16,23 @@ import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { validateField, isRequired, isEmailValid, isStrongPassword } from '../utils/validation';
 import { colors } from '../theme/colors';
-import type { RootState } from '../store';
+import { setCurrentUser, logoutUser } from '../store/slices/uiSlice';
+import type { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavProp>();
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Obtener usuario actual de Redux
   const mode = useSelector((state: RootState) => state.ui.mode);
+  const currentUser = useSelector((state: RootState) => state.ui.currentUser);
   
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: currentUser?.name || '',
+    email: currentUser?.email || '',
     password: '',
   });
   
@@ -45,6 +50,7 @@ export default function ProfileScreen() {
 
   const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
   const backgroundColor = mode === 'ahorro' ? colors.savingsBg : colors.bg;
+  const isLoggedIn = !!currentUser;
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -90,8 +96,8 @@ export default function ProfileScreen() {
       newErrors.email = emailValidation.message || '';
     }
 
-    // Validar contraseña (solo si se ingresó)
-    if (formData.password) {
+    // Validar contraseña (solo si se ingresó y no es el usuario actual)
+    if (formData.password && !isLoggedIn) {
       const passwordValidation = isStrongPassword(formData.password);
       if (!passwordValidation.isValid) {
         newErrors.password = passwordValidation.message || '';
@@ -105,7 +111,7 @@ export default function ProfileScreen() {
     return isValid;
   };
 
-  const submit = () => {
+  const handleSaveProfile = async () => {
     if (!validateFormData()) {
       Alert.alert(
         'Datos incompletos', 
@@ -114,10 +120,53 @@ export default function ProfileScreen() {
       return;
     }
 
+    try {
+      // Aquí iría la lógica para actualizar el perfil en Supabase
+      // Por ahora, solo actualizamos Redux
+      
+      if (isLoggedIn && currentUser) {
+        // Actualizar usuario existente
+        const updatedUser = {
+          ...currentUser,
+          name: formData.name,
+          email: formData.email,
+        };
+        
+        dispatch(setCurrentUser(updatedUser));
+        
+        Alert.alert(
+          'Perfil actualizado', 
+          'Tu información se ha guardado correctamente.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        // Crear nuevo usuario (esto sería para registro, pero manejado aquí)
+        Alert.alert(
+          'No autenticado', 
+          'Por favor inicia sesión primero.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo guardar la información.');
+    }
+  };
+
+  const handleLogout = () => {
     Alert.alert(
-      'Perfil actualizado', 
-      'Tu información se ha guardado correctamente.',
-      [{ text: 'OK' }]
+      'Cerrar sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Cerrar sesión', 
+          style: 'destructive',
+          onPress: () => {
+            dispatch(logoutUser());
+            Alert.alert('Sesión cerrada', 'Has cerrado sesión correctamente.');
+          }
+        }
+      ]
     );
   };
 
@@ -140,54 +189,83 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <SectionTitle 
-          text="Mi Perfil" 
-          color={themeColor}
-          align="left"
-        />
+        {/* Información del usuario */}
+        <View style={styles.userInfoSection}>
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatar, { backgroundColor: themeColor }]}>
+              <Text style={styles.avatarText}>
+                {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </Text>
+            </View>
+          </View>
+          
+          <SectionTitle 
+            text={currentUser ? `Hola, ${currentUser.name}` : "Mi Perfil"} 
+            color={themeColor}
+            align="center"
+          />
+          
+          {currentUser && (
+            <Text style={[styles.userEmail, { color: themeColor }]}>
+              {currentUser.email}
+            </Text>
+          )}
+        </View>
 
-        <CustomInput
-          label="Nombre completo"
-          placeholder="Tu nombre completo"
-          value={formData.name}
-          onChangeText={(text) => handleFieldChange('name', text)}
-          onBlur={() => handleFieldBlur('name')}
-          error={errors.name}
-          required
-          autoCapitalize="words"
-        />
+        {/* Formulario de perfil */}
+        <View style={styles.formSection}>
+          <SectionTitle 
+            text="Información Personal" 
+            color={themeColor}
+            align="left"
+          />
 
-        <CustomInput
-          label="Email"
-          placeholder="nombre@dominio.com"
-          value={formData.email}
-          onChangeText={(text) => handleFieldChange('email', text)}
-          onBlur={() => handleFieldBlur('email')}
-          error={errors.email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          required
-        />
+          <CustomInput
+            label="Nombre completo"
+            placeholder="Tu nombre completo"
+            value={formData.name}
+            onChangeText={(text) => handleFieldChange('name', text)}
+            onBlur={() => handleFieldBlur('name')}
+            error={errors.name}
+            required
+            autoCapitalize="words"
+          />
 
-        <CustomInput
-          label="Contraseña"
-          placeholder="••••••••"
-          value={formData.password}
-          onChangeText={(text) => handleFieldChange('password', text)}
-          onBlur={() => handleFieldBlur('password')}
-          error={errors.password}
-          secureTextEntry
-          showCharacterCount
-          maxLength={20}
-        />
+          <CustomInput
+            label="Email"
+            placeholder="nombre@dominio.com"
+            value={formData.email}
+            onChangeText={(text) => handleFieldChange('email', text)}
+            onBlur={() => handleFieldBlur('email')}
+            error={errors.email}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            required
+          />
 
-        <CustomButton
-          text="Guardar Cambios"
-          onPress={submit}
-          variant={mode === 'ahorro' ? 'savings' : 'primary'}
-          disabled={hasErrors}
-          style={styles.saveButton}
-        />
+          <CustomInput
+            label={isLoggedIn ? "Nueva contraseña (opcional)" : "Contraseña"}
+            placeholder={isLoggedIn ? "Dejar en blanco para no cambiar" : "••••••••"}
+            value={formData.password}
+            onChangeText={(text) => handleFieldChange('password', text)}
+            onBlur={() => handleFieldBlur('password')}
+            error={errors.password}
+            secureTextEntry
+            showCharacterCount
+            maxLength={20}
+            required={!isLoggedIn}
+          />
+
+          {isLoggedIn && (
+            <CustomButton
+              text="Guardar Cambios"
+              onPress={handleSaveProfile}
+              variant={mode === 'ahorro' ? 'savings' : 'primary'}
+              disabled={hasErrors}
+              style={styles.saveButton}
+            />
+          )}
+        </View>
 
         {/* Sección de autenticación */}
         <View style={styles.authSection}>
@@ -197,38 +275,54 @@ export default function ProfileScreen() {
             align="left"
           />
           
-          <CustomButton
-            text="Iniciar Sesión"
-            onPress={handleLogin}
-            variant="outline"
-            style={styles.authButton}
-          />
+          {isLoggedIn ? (
+            <>
+              <CustomButton
+                text="Cerrar Sesión"
+                onPress={handleLogout}
+                variant="outline"
+                style={styles.authButton}
+              />
+            </>
+          ) : (
+            <>
+              <CustomButton
+                text="Iniciar Sesión"
+                onPress={handleLogin}
+                variant="outline"
+                style={styles.authButton}
+              />
 
-          <CustomButton
-            text="Crear Cuenta"
-            onPress={handleRegister}
-            variant="savings"
-            style={styles.authButton}
-          />
+              <CustomButton
+                text="Crear Cuenta"
+                onPress={handleRegister}
+                variant="savings"
+                style={styles.authButton}
+              />
+            </>
+          )}
         </View>
 
-        <View style={styles.statsSection}>
-          <SectionTitle 
-            text="Mis Estadísticas" 
-            color={themeColor}
-            align="left"
-          />
-          <View style={styles.stats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Recetas probadas</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>8</Text>
-              <Text style={styles.statLabel}>Favoritas</Text>
+        {/* Estadísticas */}
+        {isLoggedIn && (
+          <View style={styles.statsSection}>
+            <SectionTitle 
+              text="Mis Estadísticas" 
+              color={themeColor}
+              align="left"
+            />
+            <View style={styles.stats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>12</Text>
+                <Text style={styles.statLabel}>Recetas probadas</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>8</Text>
+                <Text style={styles.statLabel}>Favoritas</Text>
+              </View>
             </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -242,9 +336,37 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  userInfoSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingVertical: 20,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  userEmail: {
+    fontSize: 14,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  formSection: {
+    marginBottom: 24,
+  },
   saveButton: {
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   authSection: {
     marginBottom: 24,
