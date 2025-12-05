@@ -43,6 +43,11 @@ const uiSlice = createSlice({
     removeFavorite(state, action: PayloadAction<string>) {
       state.favorites = state.favorites.filter(id => id !== action.payload);
     },
+    // Acción especial para limpiar solo ciertas partes del estado
+    clearPersistedState(state) {
+      state.currentUser = null;
+      state.favorites = [];
+    },
   },
 });
 
@@ -52,6 +57,7 @@ export const {
   setCurrentUser, 
   logoutUser,
   addFavorite, 
-  removeFavorite 
+  removeFavorite,
+  clearPersistedState 
 } = uiSlice.actions;
 export default uiSlice.reducer;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -17,6 +17,7 @@ import CustomButton from '../components/CustomButton';
 import { validateField, isRequired, isEmailValid, isStrongPassword } from '../utils/validation';
 import { colors } from '../theme/colors';
 import { setCurrentUser, logoutUser } from '../store/slices/uiSlice';
+import { supabase } from '../lib/supabase';
 import type { RootState, AppDispatch } from '../store';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -31,8 +32,8 @@ export default function ProfileScreen() {
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
   
   const [formData, setFormData] = useState({
-    name: currentUser?.name || '',
-    email: currentUser?.email || '',
+    name: '',
+    email: '',
     password: '',
   });
   
@@ -48,28 +49,88 @@ export default function ProfileScreen() {
     password: false,
   });
 
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
   const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
   const backgroundColor = mode === 'ahorro' ? colors.savingsBg : colors.bg;
   const isLoggedIn = !!currentUser;
+
+  // Función simple para hashear (debe ser la misma que en LoginScreen y RegisterScreen)
+  const simpleHash = (password: string): string => {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(36);
+  };
+
+  // Cargar datos del usuario cuando cambie
+  useEffect(() => {
+    if (currentUser) {
+      setFormData({
+        name: currentUser.name,
+        email: currentUser.email,
+        password: '',
+      });
+    } else {
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+      });
+    }
+  }, [currentUser]);
 
   const handleFieldChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Validación en tiempo real después de que el campo fue tocado
     if (touched[field as keyof typeof touched]) {
-      const validation = validateField(field, value);
-      setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+      validateField(field, value);
     }
+  };
+
+  const validateField = (field: string, value?: string) => {
+    const currentValue = value !== undefined ? value : formData[field as keyof typeof formData];
+    let validation;
+
+    switch (field) {
+      case 'name':
+        validation = isRequired(currentValue);
+        break;
+      case 'email':
+        validation = isEmailValid(currentValue);
+        break;
+      case 'password':
+        // Solo validar si se ingresó una nueva contraseña
+        if (currentValue && isLoggedIn) {
+          validation = isStrongPassword(currentValue);
+        } else if (!isLoggedIn) {
+          validation = isRequired(currentValue);
+        } else {
+          validation = { isValid: true, message: '' };
+        }
+        break;
+      default:
+        validation = isRequired(currentValue);
+    }
+
+    setErrors(prev => ({ 
+      ...prev, 
+      [field]: validation.message || '' 
+    }));
   };
 
   const handleFieldBlur = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
-    
-    const validation = validateField(field, formData[field as keyof typeof formData]);
-    setErrors(prev => ({ ...prev, [field]: validation.message || '' }));
+    validateField(field);
   };
 
   const validateFormData = () => {
+    // Marcar todos los campos como tocados
     const newTouched = {
       name: true,
       email: true,
@@ -96,12 +157,17 @@ export default function ProfileScreen() {
       newErrors.email = emailValidation.message || '';
     }
 
-    // Validar contraseña (solo si se ingresó y no es el usuario actual)
-    if (formData.password && !isLoggedIn) {
+    // Validar contraseña
+    if (formData.password && isLoggedIn) {
       const passwordValidation = isStrongPassword(formData.password);
       if (!passwordValidation.isValid) {
         newErrors.password = passwordValidation.message || '';
       }
+    }
+
+    // Validar contraseña para usuarios no logueados
+    if (!isLoggedIn && !formData.password) {
+      newErrors.password = 'La contraseña es requerida';
     }
 
     setErrors(newErrors);
@@ -120,35 +186,61 @@ export default function ProfileScreen() {
       return;
     }
 
+    setUpdating(true);
+
     try {
-      // Aquí iría la lógica para actualizar el perfil en Supabase
-      // Por ahora, solo actualizamos Redux
-      
-      if (isLoggedIn && currentUser) {
-        // Actualizar usuario existente
-        const updatedUser = {
-          ...currentUser,
-          name: formData.name,
-          email: formData.email,
-        };
-        
-        dispatch(setCurrentUser(updatedUser));
-        
+      if (!isLoggedIn || !currentUser) {
+        Alert.alert('Error', 'Debes iniciar sesión para actualizar tu perfil.');
+        return;
+      }
+
+      // Preparar datos para actualizar
+      const updateData: any = {
+        name: formData.name,
+        email: formData.email,
+      };
+
+      // Si se ingresó una nueva contraseña, hashearla
+      if (formData.password) {
+        updateData.password_hash = simpleHash(formData.password);
+      }
+
+      // Actualizar usuario en Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', currentUser.id)
+        .select();
+
+      if (error) {
+        console.error('Error al actualizar usuario:', error);
+        Alert.alert('Error', 'No se pudo actualizar tu perfil. Inténtalo de nuevo.');
+        return;
+      }
+
+      if (data && data[0]) {
+        // Actualizar usuario en Redux
+        dispatch(setCurrentUser({
+          id: data[0].id,
+          name: data[0].name,
+          email: data[0].email
+        }));
+
         Alert.alert(
           'Perfil actualizado', 
           'Tu información se ha guardado correctamente.',
           [{ text: 'OK' }]
         );
-      } else {
-        // Crear nuevo usuario (esto sería para registro, pero manejado aquí)
-        Alert.alert(
-          'No autenticado', 
-          'Por favor inicia sesión primero.',
-          [{ text: 'OK' }]
-        );
+        
+        // Limpiar campo de contraseña después de guardar
+        setFormData(prev => ({ ...prev, password: '' }));
       }
+
     } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar la información.');
+      console.error('Error en actualización:', error);
+      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -163,7 +255,11 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: () => {
             dispatch(logoutUser());
-            Alert.alert('Sesión cerrada', 'Has cerrado sesión correctamente.');
+            Alert.alert(
+              'Sesión cerrada', 
+              'Has cerrado sesión correctamente.',
+              [{ text: 'OK' }]
+            );
           }
         }
       ]
@@ -210,6 +306,12 @@ export default function ProfileScreen() {
               {currentUser.email}
             </Text>
           )}
+          
+          {!currentUser && (
+            <Text style={styles.welcomeText}>
+              Inicia sesión para guardar tus recetas favoritas y personalizar tu perfil.
+            </Text>
+          )}
         </View>
 
         {/* Formulario de perfil */}
@@ -229,6 +331,7 @@ export default function ProfileScreen() {
             error={errors.name}
             required
             autoCapitalize="words"
+            editable={isLoggedIn}
           />
 
           <CustomInput
@@ -241,6 +344,7 @@ export default function ProfileScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             required
+            editable={isLoggedIn}
           />
 
           <CustomInput
@@ -254,14 +358,16 @@ export default function ProfileScreen() {
             showCharacterCount
             maxLength={20}
             required={!isLoggedIn}
+            editable={true}
           />
 
           {isLoggedIn && (
             <CustomButton
-              text="Guardar Cambios"
+              text={updating ? "Guardando..." : "Guardar Cambios"}
               onPress={handleSaveProfile}
               variant={mode === 'ahorro' ? 'savings' : 'primary'}
-              disabled={hasErrors}
+              disabled={hasErrors || updating}
+              loading={updating}
               style={styles.saveButton}
             />
           )}
@@ -283,6 +389,12 @@ export default function ProfileScreen() {
                 variant="outline"
                 style={styles.authButton}
               />
+              
+              <Text style={styles.sessionInfo}>
+                Sesión iniciada como: {currentUser?.email}
+                {'\n'}
+                Tu sesión se mantendrá incluso si cierras la aplicación.
+              </Text>
             </>
           ) : (
             <>
@@ -299,11 +411,15 @@ export default function ProfileScreen() {
                 variant="savings"
                 style={styles.authButton}
               />
+              
+              <Text style={styles.loginPrompt}>
+                Inicia sesión para acceder a todas las funciones de la aplicación.
+              </Text>
             </>
           )}
         </View>
 
-        {/* Estadísticas */}
+        {/* Estadísticas (solo para usuarios logueados) */}
         {isLoggedIn && (
           <View style={styles.statsSection}>
             <SectionTitle 
@@ -314,7 +430,7 @@ export default function ProfileScreen() {
             <View style={styles.stats}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>12</Text>
-                <Text style={styles.statLabel}>Recetas probadas</Text>
+                <Text style={styles.statLabel}>Recetas Vistas</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>8</Text>
@@ -361,6 +477,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
+  welcomeText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 20,
+  },
   formSection: {
     marginBottom: 24,
   },
@@ -377,6 +500,19 @@ const styles = StyleSheet.create({
   authButton: {
     marginBottom: 12,
   },
+  sessionInfo: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  loginPrompt: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
   statsSection: {
     marginTop: 16,
     padding: 16,
@@ -390,6 +526,7 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
   },
   statNumber: {
     fontSize: 24,
@@ -400,5 +537,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+    textAlign: 'center',
   },
 });
