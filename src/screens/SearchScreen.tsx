@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -135,7 +134,6 @@ export default function SearchScreen() {
   const hasActiveFilters = searchQuery.trim() !== '' || selectedPrice.length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -280,7 +278,6 @@ export default function SearchScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
   );
 }
 

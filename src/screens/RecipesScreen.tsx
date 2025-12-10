@@ -5,7 +5,6 @@ import {
   StyleSheet, 
   ScrollView 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,7 +48,6 @@ export default function RecipesScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -114,7 +112,6 @@ export default function RecipesScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
   );
 }
 

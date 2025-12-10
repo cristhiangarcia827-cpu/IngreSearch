@@ -6,7 +6,6 @@ import {
   Image,
   ScrollView 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -58,7 +57,6 @@ export default function HomeScreen() {
   const featuredRecipes = RECIPES.slice(0, 3);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -106,7 +104,6 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
   );
 }
 

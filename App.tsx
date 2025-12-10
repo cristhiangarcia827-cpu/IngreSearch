@@ -1,15 +1,13 @@
 import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native'; // Añadir ActivityIndicator
+import { View, ActivityIndicator } from 'react-native';
 import { store, persistor } from './src/store';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useTheme } from './src/hooks/useTheme';
 
-// Componente wrapper para manejar tema en navegación
 function NavigationWrapper() {
   const { colors, isDarkMode } = useTheme();
 
@@ -32,7 +30,8 @@ function NavigationWrapper() {
     <>
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'} 
-        backgroundColor={colors.bg}
+        backgroundColor="transparent"
+        translucent={true}
       />
       <NavigationContainer theme={customTheme}>
         <RootNavigator />
@@ -41,7 +40,6 @@ function NavigationWrapper() {
   );
 }
 
-// Componente de loading para PersistGate
 const LoadingComponent = () => {
   const { colors } = useTheme();
   
@@ -54,15 +52,13 @@ const LoadingComponent = () => {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <Provider store={store}>
-        <PersistGate 
-          loading={<LoadingComponent />}  // Usar componente, no null o string
-          persistor={persistor}
-        >
-          <NavigationWrapper />
-        </PersistGate>
-      </Provider>
-    </SafeAreaProvider>
+    <Provider store={store}>
+      <PersistGate 
+        loading={<LoadingComponent />}
+        persistor={persistor}
+      >
+        <NavigationWrapper />
+      </PersistGate>
+    </Provider>
   );
 }

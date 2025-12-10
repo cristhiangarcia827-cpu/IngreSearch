@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../hooks/useTheme'; // Añadir import
+import { useTheme } from '../hooks/useTheme';
 import HomeScreen from '../screens/HomeScreen';
 import RecipesScreen from '../screens/RecipesScreen';
 import ProfileScreen from '../screens/ProfileScreen';

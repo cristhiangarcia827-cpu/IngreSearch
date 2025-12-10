@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Switch
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -76,7 +75,6 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -320,11 +318,9 @@ export default function ProfileScreen() {
             • Busca recetas por ingredientes que tengas en casa{'\n'}
             • Filtra por precio: bajo, medio o alto{'\n'}
             • Guarda tus recetas favoritas{'\n'}
-            • Modo ahorro: solo recetas económicas
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
   );
 }
 
