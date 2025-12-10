@@ -16,7 +16,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword } from '../utils/validation';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
 import { setCurrentUser } from '../store/slices/uiSlice';
 import { supabase } from '../lib/supabase';
 import type { RootState, AppDispatch } from '../store';
@@ -26,6 +26,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 export default function EditProfileScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
+  
+  // Usar hook de tema
+  const { colors, themeColor, backgroundColor } = useTheme();
   
   // Obtener usuario actual de Redux
   const mode = useSelector((state: RootState) => state.ui.mode);
@@ -57,9 +60,6 @@ export default function EditProfileScreen() {
 
   const [loading, setLoading] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-
-  const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
-  const backgroundColor = mode === 'ahorro' ? colors.savingsBg : colors.bg;
 
   // Función simple para hashear
   const simpleHash = (password: string): string => {
@@ -273,7 +273,9 @@ export default function EditProfileScreen() {
 
         <View style={styles.formContainer}>
           {/* Información básica */}
-          <Text style={styles.sectionLabel}>Información básica</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>
+            Información básica
+          </Text>
           
           <CustomInput
             label="Nombre completo"
@@ -300,7 +302,7 @@ export default function EditProfileScreen() {
 
           {/* Cambio de contraseña */}
           <View style={styles.passwordSection}>
-            <Text style={styles.sectionLabel}>
+            <Text style={[styles.sectionLabel, { color: colors.textPrimary }]}>
               Cambio de contraseña {!changingPassword && '(opcional)'}
             </Text>
             
@@ -412,7 +414,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 12,
     marginTop: 8,
   },

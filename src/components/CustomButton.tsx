@@ -8,7 +8,7 @@ import {
   TextStyle,
   ActivityIndicator
 } from 'react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme';
 
 type ButtonVariant = 'primary' | 'savings' | 'outline' | 'text';
 
@@ -33,6 +33,7 @@ export default function CustomButton({
   textStyle,
   fullWidth = true
 }: Props) {
+  const { colors } = useTheme();
 
   const getVariantColor = (): string => {
     switch (variant) {
@@ -53,7 +54,7 @@ export default function CustomButton({
   };
 
   const getTextColor = (): string => {
-    if (disabled) return '#999';
+    if (disabled) return colors.disabled;
     if (variant === 'outline' || variant === 'text') return getVariantColor();
     return '#fff';
   };

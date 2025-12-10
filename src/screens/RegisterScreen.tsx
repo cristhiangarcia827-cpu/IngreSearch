@@ -15,7 +15,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
 import { supabase } from '../lib/supabase';
 import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
@@ -24,7 +24,10 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavProp>();
-  const dispatch = useDispatch<AppDispatch>(); // <-- Tipado correcto
+  const dispatch = useDispatch<AppDispatch>();
+  
+  // Usar hook de tema
+  const { colors, themeColor, backgroundColor } = useTheme();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -182,7 +185,7 @@ export default function RegisterScreen() {
         }));
         
         // Cargar favoritos del nuevo usuario
-        dispatch(loadFavorites(newUser.id)); // <-- CORREGIDO: usar newUser.id
+        dispatch(loadFavorites(newUser.id));
       }
 
       // 5. Registro exitoso
@@ -209,7 +212,7 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView 
@@ -218,7 +221,7 @@ export default function RegisterScreen() {
       >
         <SectionTitle 
           text="Crear Cuenta" 
-          color={colors.primary}
+          color={themeColor}
           align="center"
         />
 
@@ -294,7 +297,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   scrollContent: {
     padding: 16,

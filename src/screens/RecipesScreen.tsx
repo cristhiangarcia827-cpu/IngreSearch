@@ -5,12 +5,14 @@ import {
   StyleSheet, 
   ScrollView 
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import SectionTitle from '../components/SectionTitle';
 import RecipeCard from '../components/RecipeCard';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { loadFavorites } from '../store/slices/uiSlice';
@@ -20,15 +22,13 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function RecipesScreen() {
   const navigation = useNavigation<NavProp>();
-  const dispatch = useDispatch<AppDispatch>(); // <-- Tipado correcto
+  const dispatch = useDispatch<AppDispatch>();
+  const { colors, themeColor, backgroundColor } = useTheme();
   
   const { ingredients, results } = useSelector((state: RootState) => state.search);
   const mode = useSelector((state: RootState) => state.ui.mode);
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
-  const favorites = useSelector((state: RootState) => state.ui.favorites);
 
-  const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
-  
   // Cargar favoritos cuando se monta el componente y hay usuario
   useEffect(() => {
     if (currentUser) {
@@ -49,71 +49,89 @@ export default function RecipesScreen() {
   };
 
   return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {results.length > 0 ? (
-        <>
-          <SectionTitle 
-            text="Resultados de Búsqueda" 
-            color={themeColor}
-            align="left"
-          />
-          {ingredients && (
-            <Text style={styles.searchInfo}>
-              Ingredientes: {ingredients}
-            </Text>
-          )}
-        </>
-      ) : (
-        <SectionTitle 
-          text="Todas las Recetas" 
-          color={themeColor}
-          align="left"
-        />
-      )}
-
-      <View style={styles.recipesList}>
-        {displayRecipes.length > 0 ? (
-          displayRecipes.map(recipe => (
-            <RecipeCard
-              key={recipe.id}
-              title={recipe.title}
-              priceTag={recipe.priceTag}
-              onPress={() => handleRecipePress(recipe.id)}
-              recipeId={recipe.id}
-              style={styles.recipeCard}
+    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          {results.length > 0 ? (
+            <View style={{ flex: 1 }}>
+              <SectionTitle 
+                text="Resultados de Búsqueda" 
+                color={themeColor}
+                align="left"
+              />
+              {ingredients && (
+                <Text style={[styles.searchInfo, { color: colors.gray }]}>
+                  Ingredientes: {ingredients}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <SectionTitle 
+              text="Todas las Recetas" 
+              color={themeColor}
+              align="left"
+              style={{ flex: 1 }}
             />
-          ))
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {results.length > 0 
-                ? 'No se encontraron recetas con esos ingredientes'
-                : 'No hay recetas disponibles'}
-            </Text>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.recipesList}>
+          {displayRecipes.length > 0 ? (
+            displayRecipes.map(recipe => (
+              <RecipeCard
+                key={recipe.id}
+                title={recipe.title}
+                priceTag={recipe.priceTag}
+                onPress={() => handleRecipePress(recipe.id)}
+                recipeId={recipe.id}
+                style={styles.recipeCard}
+              />
+            ))
+          ) : (
+            <View style={[styles.emptyState, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+              <Ionicons 
+                name="restaurant-outline" 
+                size={48} 
+                color={colors.gray} 
+                style={styles.emptyIcon}
+              />
+              <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
+                {results.length > 0 
+                  ? 'No se encontraron recetas con esos ingredientes'
+                  : 'No hay recetas disponibles'}
+              </Text>
+              {results.length > 0 && (
+                <Text style={[styles.emptySubtext, { color: colors.gray }]}>
+                  Intenta con otros ingredientes o elimina algunos filtros
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   contentContainer: {
     padding: 16,
     paddingBottom: 32,
   },
+  header: {
+    marginBottom: 20,
+  },
   searchInfo: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    marginTop: 4,
     fontStyle: 'italic',
   },
   recipesList: {
@@ -126,10 +144,21 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  emptyIcon: {
+    marginBottom: 16,
+    opacity: 0.5,
   },
   emptyText: {
     textAlign: 'center',
     fontSize: 16,
-    color: '#666',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    textAlign: 'center',
+    fontSize: 14,
   },
 });

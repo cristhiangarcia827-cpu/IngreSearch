@@ -2,11 +2,11 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../hooks/useTheme'; // Añadir import
 import HomeScreen from '../screens/HomeScreen';
 import RecipesScreen from '../screens/RecipesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SearchScreen from '../screens/SearchScreen';
-import { colors } from '../theme/colors';
 
 export type TabsParamList = {
   Inicio: undefined;
@@ -19,16 +19,17 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 
 export default function TabsNavigator() {
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme(); // Usar hook
   
   return (
     <Tabs.Navigator
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: '#666',
+        tabBarInactiveTintColor: colors.gray,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: colors.cardBg,
           borderTopWidth: 1,
-          borderTopColor: '#eee',
+          borderTopColor: colors.border,
           paddingBottom: 4 + insets.bottom, 
           paddingTop: 4,
           height: 60 + insets.bottom,
@@ -44,6 +45,7 @@ export default function TabsNavigator() {
           fontSize: 12,
           marginBottom: 4,
         },
+        headerShown: true, 
       }}
     >
       <Tabs.Screen 

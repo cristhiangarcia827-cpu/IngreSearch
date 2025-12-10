@@ -5,6 +5,7 @@ import {
   TextStyle,
   View 
 } from 'react-native';
+import { useTheme } from '../hooks/useTheme'; // Añadir import
 
 type Props = {
   text: string;
@@ -17,12 +18,17 @@ type Props = {
 
 export default function SectionTitle({ 
   text, 
-  color = '#333',
+  color, // Si no se proporciona color, usar del tema
   align = 'center',
   size = 'medium',
   withDivider = false,
   style 
 }: Props) {
+  const { colors, themeColor } = useTheme(); // Usar hook
+  
+  // Usar color proporcionado o color del tema
+  const titleColor = color || themeColor;
+
   const getFontSize = (): number => {
     switch (size) {
       case 'small': return 16;
@@ -39,9 +45,8 @@ export default function SectionTitle({
     }
   };
 
-  // Crear el estilo de texto de manera separada para evitar el error de tipos
   const textStyles = {
-    color,
+    color: titleColor,
     fontSize: getFontSize(),
     fontWeight: getFontWeight(),
     textAlign: align,
@@ -62,7 +67,7 @@ export default function SectionTitle({
         <View 
           style={[
             styles.divider,
-            { backgroundColor: color }
+            { backgroundColor: titleColor }
           ]} 
         />
       )}

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,14 +19,13 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import RecipeCard from '../components/RecipeCard';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
 import { setIngredients, setResults } from '../store/slices/searchSlice';
 import { loadFavorites } from '../store/slices/uiSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Recipe } from '../data/recipes';
 
-// Crear un tipo compuesto que combine ambos navigators
 type SearchScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList, 'Tabs'>,
   BottomTabNavigationProp<TabsParamList>
@@ -34,6 +34,7 @@ type SearchScreenNavigationProp = CompositeNavigationProp<
 export default function SearchScreen() {
   const navigation = useNavigation<SearchScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
+  const { colors, themeColor, backgroundColor } = useTheme();
 
   // Redux state
   const searchState = useSelector((state: RootState) => state.search);
@@ -43,9 +44,6 @@ export default function SearchScreen() {
   // Estado local para búsqueda
   const [searchQuery, setSearchQuery] = useState(searchState.ingredients);
   const [selectedPrice, setSelectedPrice] = useState<('bajo' | 'medio' | 'alto')[]>([]);
-
-  const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
-  const backgroundColor = mode === 'ahorro' ? colors.savingsBg : colors.bg;
 
   // Opciones de precio
   const priceOptions: ('bajo' | 'medio' | 'alto')[] = ['bajo', 'medio', 'alto'];
@@ -137,147 +135,152 @@ export default function SearchScreen() {
   const hasActiveFilters = searchQuery.trim() !== '' || selectedPrice.length > 0;
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <SectionTitle 
-        text="Buscar Recetas" 
-        color={themeColor}
-        align="left"
-      />
-
-      {/* Barra de búsqueda */}
-      <View style={styles.searchSection}>
-        <CustomInput
-          placeholder="Ej: arroz, huevo, tomate..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          containerStyle={styles.searchInput}
-        />
-        <CustomButton
-          text="Buscar"
-          onPress={handleSearch}
-          variant={mode === 'ahorro' ? 'savings' : 'primary'}
-          style={styles.searchButton}
-        />
-      </View>
-
-      {/* Ingredientes rápidos */}
-      <View style={styles.quickSearchSection}>
-        <Text style={[styles.sectionTitle, { color: themeColor }]}>
-          Ingredientes comunes
-        </Text>
-        <View style={styles.quickSearchContainer}>
-          {commonIngredients.map(ingredient => (
-            <TouchableOpacity
-              key={ingredient}
-              style={[
-                styles.quickSearchChip,
-                { backgroundColor: themeColor + '20', borderColor: themeColor }
-              ]}
-              onPress={() => handleQuickSearch(ingredient)}
-            >
-              <Text style={[styles.quickSearchText, { color: themeColor }]}>
-                {ingredient}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <SafeAreaView style={{ flex: 1, backgroundColor }} edges={['top']}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <SectionTitle 
+            text="Buscar Recetas" 
+            color={themeColor}
+            align="left"
+            style={{ flex: 1 }}
+          />
         </View>
-      </View>
 
-      {/* Filtros de precio */}
-      <View style={styles.filterSection}>
-        <Text style={[styles.sectionTitle, { color: themeColor }]}>
-          Filtro por Precio
-        </Text>
-        <View style={styles.filterOptions}>
-          {priceOptions.map(price => {
-            const isSelected = selectedPrice.includes(price);
-            let priceColor = '';
-            
-            switch(price) {
-              case 'bajo': priceColor = colors.savingsPrimary; break;
-              case 'medio': priceColor = colors.primary; break;
-              case 'alto': priceColor = '#8A2BE2'; break;
-            }
-            
-            return (
+        {/* Barra de búsqueda */}
+        <View style={styles.searchSection}>
+          <CustomInput
+            placeholder="Ej: arroz, huevo, tomate..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            containerStyle={styles.searchInput}
+          />
+          <CustomButton
+            text="Buscar"
+            onPress={handleSearch}
+            variant={mode === 'ahorro' ? 'savings' : 'primary'}
+            style={styles.searchButton}
+          />
+        </View>
+
+        {/* Ingredientes rápidos */}
+        <View style={[styles.quickSearchSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: themeColor }]}>
+            Ingredientes comunes
+          </Text>
+          <View style={styles.quickSearchContainer}>
+            {commonIngredients.map(ingredient => (
               <TouchableOpacity
-                key={price}
+                key={ingredient}
                 style={[
-                  styles.filterChip,
-                  isSelected && styles.filterChipSelected,
-                  { 
-                    borderColor: priceColor,
-                    backgroundColor: isSelected ? priceColor : 'transparent'
-                  }
+                  styles.quickSearchChip,
+                  { backgroundColor: themeColor + '20', borderColor: themeColor }
                 ]}
-                onPress={() => togglePriceFilter(price)}
+                onPress={() => handleQuickSearch(ingredient)}
               >
-                <Text style={[
-                  styles.filterChipText,
-                  isSelected && styles.filterChipTextSelected,
-                  { color: isSelected ? '#fff' : priceColor }
-                ]}>
-                  {price.charAt(0).toUpperCase() + price.slice(1)}
+                <Text style={[styles.quickSearchText, { color: themeColor }]}>
+                  {ingredient}
                 </Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Resultados en tiempo real */}
-      <View style={styles.resultsSection}>
-        <View style={styles.resultsHeader}>
-          <Text style={[styles.sectionTitle, { color: themeColor }]}>
-            Resultados ({filteredRecipes.length})
-          </Text>
-          {hasActiveFilters && (
-            <TouchableOpacity onPress={clearFilters}>
-              <Text style={[styles.clearButton, { color: themeColor }]}>
-                Limpiar filtros
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {filteredRecipes.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyText, { color: themeColor }]}>
-              {hasActiveFilters 
-                ? 'No se encontraron recetas con esos criterios'
-                : 'Ingresa ingredientes para buscar recetas'}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.resultsList}>
-            {filteredRecipes.slice(0, 5).map(recipe => (
-              <RecipeCard
-                key={recipe.id}
-                title={recipe.title}
-                priceTag={recipe.priceTag}
-                onPress={() => handleRecipePress(recipe.id)}
-                recipeId={recipe.id}
-                style={styles.recipeCard}
-              />
             ))}
-            
-            {filteredRecipes.length > 5 && (
-              <CustomButton
-                text={`Ver todas (${filteredRecipes.length})`}
-                onPress={handleSearch}
-                variant="outline"
-                style={styles.viewAllButton}
-              />
+          </View>
+        </View>
+
+        {/* Filtros de precio */}
+        <View style={[styles.filterSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: themeColor }]}>
+            Filtro por Precio
+          </Text>
+          <View style={styles.filterOptions}>
+            {priceOptions.map(price => {
+              const isSelected = selectedPrice.includes(price);
+              let priceColor = '';
+              
+              switch(price) {
+                case 'bajo': priceColor = colors.savingsPrimary; break;
+                case 'medio': priceColor = colors.primary; break;
+                case 'alto': priceColor = '#8A2BE2'; break;
+              }
+              
+              return (
+                <TouchableOpacity
+                  key={price}
+                  style={[
+                    styles.filterChip,
+                    isSelected && styles.filterChipSelected,
+                    { 
+                      borderColor: priceColor,
+                      backgroundColor: isSelected ? priceColor : 'transparent'
+                    }
+                  ]}
+                  onPress={() => togglePriceFilter(price)}
+                >
+                  <Text style={[
+                    styles.filterChipText,
+                    isSelected && styles.filterChipTextSelected,
+                    { color: isSelected ? '#fff' : priceColor }
+                  ]}>
+                    {price.charAt(0).toUpperCase() + price.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Resultados en tiempo real */}
+        <View style={[styles.resultsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <View style={styles.resultsHeader}>
+            <Text style={[styles.sectionTitle, { color: themeColor }]}>
+              Resultados ({filteredRecipes.length})
+            </Text>
+            {hasActiveFilters && (
+              <TouchableOpacity onPress={clearFilters}>
+                <Text style={[styles.clearButton, { color: themeColor }]}>
+                  Limpiar filtros
+                </Text>
+              </TouchableOpacity>
             )}
           </View>
-        )}
-      </View>
-    </ScrollView>
+
+          {filteredRecipes.length === 0 ? (
+            <View style={[styles.emptyState, { backgroundColor: colors.lightGray }]}>
+              <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
+                {hasActiveFilters 
+                  ? 'No se encontraron recetas con esos criterios'
+                  : 'Ingresa ingredientes para buscar recetas'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.resultsList}>
+              {filteredRecipes.slice(0, 5).map(recipe => (
+                <RecipeCard
+                  key={recipe.id}
+                  title={recipe.title}
+                  priceTag={recipe.priceTag}
+                  onPress={() => handleRecipePress(recipe.id)}
+                  recipeId={recipe.id}
+                  style={styles.recipeCard}
+                />
+              ))}
+              
+              {filteredRecipes.length > 5 && (
+                <CustomButton
+                  text={`Ver todas (${filteredRecipes.length})`}
+                  onPress={handleSearch}
+                  variant="outline"
+                  style={styles.viewAllButton}
+                />
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -288,6 +291,9 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
     paddingBottom: 32,
+  },
+  header: {
+    marginBottom: 20,
   },
   searchSection: {
     marginBottom: 20,
@@ -300,6 +306,9 @@ const styles = StyleSheet.create({
   },
   quickSearchSection: {
     marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   sectionTitle: {
     fontSize: 16,
@@ -323,6 +332,9 @@ const styles = StyleSheet.create({
   },
   filterSection: {
     marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   filterOptions: {
     flexDirection: 'row',
@@ -349,6 +361,9 @@ const styles = StyleSheet.create({
   },
   resultsSection: {
     marginTop: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   resultsHeader: {
     flexDirection: 'row',
@@ -365,7 +380,6 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 12,
   },
   emptyText: {

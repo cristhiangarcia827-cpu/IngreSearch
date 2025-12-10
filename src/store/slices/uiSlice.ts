@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { supabase } from '../../lib/supabase';
+import { ColorTheme } from '../../theme/colors';
 
 type User = {
   id: string;
@@ -13,6 +14,8 @@ type UiState = {
   favorites: string[];
   loadingFavorites: boolean;
   favoriteError: string | null;
+  colorTheme: ColorTheme;
+  systemColorScheme: 'light' | 'dark';
 };
 
 const initialState: UiState = {
@@ -21,6 +24,8 @@ const initialState: UiState = {
   favorites: [],
   loadingFavorites: false,
   favoriteError: null,
+  colorTheme: 'system',
+  systemColorScheme: 'light',
 };
 
 // Thunk para cargar favoritos desde Supabase
@@ -115,6 +120,22 @@ const uiSlice = createSlice({
     clearFavoriteError(state) {
       state.favoriteError = null;
     },
+    // Nuevas acciones para tema
+    setColorTheme(state, action: PayloadAction<ColorTheme>) {
+      state.colorTheme = action.payload;
+    },
+    toggleColorTheme(state) {
+      if (state.colorTheme === 'system') {
+        state.colorTheme = 'light';
+      } else if (state.colorTheme === 'light') {
+        state.colorTheme = 'dark';
+      } else {
+        state.colorTheme = 'system';
+      }
+    },
+    setSystemColorScheme(state, action: PayloadAction<'light' | 'dark'>) {
+      state.systemColorScheme = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -162,7 +183,10 @@ export const {
   toggleMode, 
   setCurrentUser, 
   logoutUser,
-  clearFavoriteError
+  clearFavoriteError,
+  setColorTheme,
+  toggleColorTheme,
+  setSystemColorScheme,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

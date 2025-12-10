@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ViewStyle 
 } from 'react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme'; // Añadir import
 import FavoriteButton from './FavoriteButton';
 
 type Props = {
@@ -24,16 +24,33 @@ export default function RecipeCard({
   recipeId,
   style 
 }: Props) {
+  const { colors } = useTheme(); // Usar hook
+  
   const tagColor = priceTag === 'bajo' ? colors.savingsPrimary : 
                    priceTag === 'medio' ? colors.primary : '#8A2BE2';
 
   return (
-    <TouchableOpacity style={[styles.card, style]} onPress={onPress}>
+    <TouchableOpacity 
+      style={[
+        styles.card, 
+        style, 
+        { 
+          backgroundColor: colors.cardBg, 
+          borderColor: colors.border 
+        }
+      ]} 
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={[styles.tag, { backgroundColor: tagColor }]} />
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={2}>
+          {title}
+        </Text>
         <View style={styles.footer}>
-          <Text style={styles.subtitle}>Costo: {priceTag}</Text>
+          <Text style={[styles.subtitle, { color: colors.gray }]}>
+            Costo: {priceTag}
+          </Text>
           <FavoriteButton recipeId={recipeId} />
         </View>
       </View>
@@ -46,11 +63,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     padding: 12, 
     borderWidth: 1, 
-    borderColor: '#eee', 
     borderRadius: 8, 
     marginBottom: 8, 
     alignItems: 'center',
-    backgroundColor: '#ffffff'
   },
   tag: { 
     width: 10, 
@@ -72,7 +87,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subtitle: { 
-    color: '#666',
     fontSize: 14 
   },
 });

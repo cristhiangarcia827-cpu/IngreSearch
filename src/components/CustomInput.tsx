@@ -8,7 +8,7 @@ import {
   ViewStyle,
   TextStyle 
 } from 'react-native';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme';
 
 type Props = TextInputProps & {
   label?: string;
@@ -36,6 +36,8 @@ export default function CustomInput({
   maxLength,
   ...rest 
 }: Props) {
+  const { colors } = useTheme();
+  
   const showRequiredError = required && value.trim() === '';
   const displayError = error || (showRequiredError ? 'Este campo es obligatorio' : '');
 
@@ -43,12 +45,12 @@ export default function CustomInput({
     <View style={[styles.wrapper, containerStyle]}>
       {label ? (
         <View style={styles.labelContainer}>
-          <Text style={[styles.label, labelStyle]}>
+          <Text style={[styles.label, labelStyle, { color: colors.textPrimary }]}>
             {label}
-            {required && <Text style={styles.required}> *</Text>}
+            {required && <Text style={[styles.required, { color: colors.error }]}> *</Text>}
           </Text>
           {showCharacterCount && maxLength && (
-            <Text style={styles.characterCount}>
+            <Text style={[styles.characterCount, { color: colors.gray }]}>
               {value.length}/{maxLength}
             </Text>
           )}
@@ -59,18 +61,23 @@ export default function CustomInput({
         style={[
           styles.input, 
           displayError ? styles.inputError : styles.inputNormal,
-          rest.multiline && styles.multilineInput
+          rest.multiline && styles.multilineInput,
+          { 
+            borderColor: displayError ? colors.error : colors.border,
+            backgroundColor: colors.cardBg,
+            color: colors.textPrimary,
+          }
         ]}
         value={value}
         onChangeText={onChangeText}
         onBlur={onBlur}
-        placeholderTextColor="#999"
+        placeholderTextColor={colors.gray}
         maxLength={maxLength}
         {...rest}
       />
       
       {displayError ? (
-        <Text style={styles.error}>{displayError}</Text>
+        <Text style={[styles.error, { color: colors.error }]}>{displayError}</Text>
       ) : null}
     </View>
   );
@@ -89,10 +96,9 @@ const styles = StyleSheet.create({
   label: { 
     fontWeight: '500',
     fontSize: 14,
-    color: colors.textPrimary || '#333',
   },
   required: { 
-    color: colors.error 
+    fontWeight: 'bold',
   },
   input: { 
     borderWidth: 1, 
@@ -100,25 +106,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, 
     paddingVertical: 10,
     fontSize: 16,
-    backgroundColor: '#fff',
   },
   inputNormal: { 
-    borderColor: '#ddd',
+    // borderColor manejado inline
   },
   inputError: { 
-    borderColor: colors.error 
+    // borderColor manejado inline
   },
   multilineInput: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
   error: { 
-    color: colors.error, 
     marginTop: 4, 
     fontSize: 12 
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
   }
 });

@@ -16,7 +16,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid } from '../utils/validation';
-import { colors } from '../theme/colors';
+import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
 import { supabase } from '../lib/supabase';
 import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
@@ -26,6 +26,9 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 export default function LoginScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
+  
+  // Usar hook de tema
+  const { colors, themeColor, backgroundColor } = useTheme();
   
   const [formData, setFormData] = useState({
     email: '',
@@ -157,9 +160,9 @@ export default function LoginScreen() {
         id: user.id,
         name: user.name,
         email: user.email
-        
       }));
       dispatch(loadFavorites(user.id));
+
       // 4. Login exitoso
       Alert.alert(
         '¡Bienvenido!', 
@@ -198,7 +201,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView 
-      style={styles.container}
+      style={[styles.container, { backgroundColor }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView 
@@ -207,7 +210,7 @@ export default function LoginScreen() {
       >
         <SectionTitle 
           text="Iniciar Sesión" 
-          color={colors.primary}
+          color={themeColor}
           align="center"
         />
 
@@ -255,9 +258,9 @@ export default function LoginScreen() {
           />
 
           <View style={styles.separator}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>o</Text>
-            <View style={styles.separatorLine} />
+            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.separatorText, { color: colors.gray }]}>o</Text>
+            <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
           </View>
 
           <CustomButton
@@ -275,7 +278,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bg,
   },
   scrollContent: {
     padding: 16,
@@ -307,11 +309,9 @@ const styles = StyleSheet.create({
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#ddd',
   },
   separatorText: {
     marginHorizontal: 16,
-    color: '#666',
     fontSize: 14,
   },
 });
