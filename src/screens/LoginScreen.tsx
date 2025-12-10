@@ -18,7 +18,7 @@ import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid } from '../utils/validation';
 import { colors } from '../theme/colors';
 import { supabase } from '../lib/supabase';
-import { setCurrentUser } from '../store/slices/uiSlice';
+import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
@@ -157,8 +157,9 @@ export default function LoginScreen() {
         id: user.id,
         name: user.name,
         email: user.email
+        
       }));
-
+      dispatch(loadFavorites(user.id));
       // 4. Login exitoso
       Alert.alert(
         '¡Bienvenido!', 

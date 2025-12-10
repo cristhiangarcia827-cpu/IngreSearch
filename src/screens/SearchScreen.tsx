@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -21,9 +21,9 @@ import RecipeCard from '../components/RecipeCard';
 import { colors } from '../theme/colors';
 import { RECIPES } from '../data/recipes';
 import { setIngredients, setResults } from '../store/slices/searchSlice';
+import { loadFavorites } from '../store/slices/uiSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Recipe } from '../data/recipes';
-
 
 // Crear un tipo compuesto que combine ambos navigators
 type SearchScreenNavigationProp = CompositeNavigationProp<
@@ -38,6 +38,7 @@ export default function SearchScreen() {
   // Redux state
   const searchState = useSelector((state: RootState) => state.search);
   const mode = useSelector((state: RootState) => state.ui.mode);
+  const currentUser = useSelector((state: RootState) => state.ui.currentUser);
 
   // Estado local para búsqueda
   const [searchQuery, setSearchQuery] = useState(searchState.ingredients);
@@ -48,6 +49,13 @@ export default function SearchScreen() {
 
   // Opciones de precio
   const priceOptions: ('bajo' | 'medio' | 'alto')[] = ['bajo', 'medio', 'alto'];
+
+  // Cargar favoritos cuando se monta el componente y hay usuario
+  useEffect(() => {
+    if (currentUser) {
+      dispatch(loadFavorites(currentUser.id));
+    }
+  }, [currentUser, dispatch]);
 
   // Filtrar recetas
   const filteredRecipes = useMemo(() => {
@@ -253,6 +261,7 @@ export default function SearchScreen() {
                 title={recipe.title}
                 priceTag={recipe.priceTag}
                 onPress={() => handleRecipePress(recipe.id)}
+                recipeId={recipe.id}
                 style={styles.recipeCard}
               />
             ))}

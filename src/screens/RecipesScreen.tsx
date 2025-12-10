@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
+  Text, 
   StyleSheet, 
-  ScrollView,
-  Text
+  ScrollView 
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import SectionTitle from '../components/SectionTitle';
@@ -13,17 +13,29 @@ import RecipeCard from '../components/RecipeCard';
 import { colors } from '../theme/colors';
 import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
-import type { RootState } from '../store';
+import { loadFavorites } from '../store/slices/uiSlice';
+import type { RootState, AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function RecipesScreen() {
   const navigation = useNavigation<NavProp>();
+  const dispatch = useDispatch<AppDispatch>(); // <-- Tipado correcto
+  
   const { ingredients, results } = useSelector((state: RootState) => state.search);
   const mode = useSelector((state: RootState) => state.ui.mode);
+  const currentUser = useSelector((state: RootState) => state.ui.currentUser);
+  const favorites = useSelector((state: RootState) => state.ui.favorites);
 
   const themeColor = mode === 'ahorro' ? colors.savingsPrimary : colors.primary;
   
+  // Cargar favoritos cuando se monta el componente y hay usuario
+  useEffect(() => {
+    if (currentUser) {
+      dispatch(loadFavorites(currentUser.id));
+    }
+  }, [currentUser, dispatch]);
+
   // Mostrar resultados de búsqueda o todas las recetas
   const displayRecipes = results.length > 0 
     ? RECIPES.filter(recipe => results.includes(recipe.id))
@@ -71,6 +83,7 @@ export default function RecipesScreen() {
               title={recipe.title}
               priceTag={recipe.priceTag}
               onPress={() => handleRecipePress(recipe.id)}
+              recipeId={recipe.id}
               style={styles.recipeCard}
             />
           ))

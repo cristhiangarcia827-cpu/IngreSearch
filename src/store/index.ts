@@ -9,6 +9,7 @@ const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   whitelist: ['ui'],
+  timeout: 10000, // 10 segundos timeout
 };
 
 const rootReducer = combineReducers({
@@ -30,5 +31,6 @@ export const store = configureStore({
 
 export const persistor = persistStore(store);
 
+// Tipos TypeScript
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

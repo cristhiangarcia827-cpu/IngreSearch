@@ -17,14 +17,14 @@ import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
 import { colors } from '../theme/colors';
 import { supabase } from '../lib/supabase';
-import { setCurrentUser } from '../store/slices/uiSlice';
+import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavProp>();
-  const dispatch = useDispatch<AppDispatch>();
+  const dispatch = useDispatch<AppDispatch>(); // <-- Tipado correcto
   
   const [formData, setFormData] = useState({
     name: '',
@@ -106,7 +106,7 @@ export default function RegisterScreen() {
     return isValid;
   };
 
-  // Función simple para hashear (debe ser la misma que en LoginScreen)
+  // Función simple para hashear
   const simpleHash = (password: string): string => {
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
@@ -145,7 +145,6 @@ export default function RegisterScreen() {
       }
 
       if (checkError && checkError.code !== 'PGRST116') {
-        // PGRST116 significa "no encontrado", lo cual es bueno
         console.error('Error al verificar usuario:', checkError);
       }
 
@@ -173,13 +172,17 @@ export default function RegisterScreen() {
 
       console.log('Usuario registrado exitosamente:', data);
 
-      // 4. Guardar usuario en Redux
+      // 4. Guardar usuario en Redux y cargar favoritos
       if (data && data[0]) {
+        const newUser = data[0];
         dispatch(setCurrentUser({
-          id: data[0].id,
+          id: newUser.id,
           name: formData.name,
           email: formData.email
         }));
+        
+        // Cargar favoritos del nuevo usuario
+        dispatch(loadFavorites(newUser.id)); // <-- CORREGIDO: usar newUser.id
       }
 
       // 5. Registro exitoso
