@@ -1,5 +1,4 @@
-// RecipesScreen.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +7,6 @@ import {
   TouchableOpacity,
   Alert
 } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector, useDispatch } from 'react-redux';
@@ -16,6 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import SectionTitle from '../components/SectionTitle';
 import RecipeCard from '../components/RecipeCard';
 import CustomButton from '../components/CustomButton';
+import FilterChip from '../components/FilterChip';
+import EmptyState from '../components/EmptyState';
+import UserInfoCard from '../components/UserInfoCard';
 import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
@@ -34,30 +35,25 @@ export default function RecipesScreen() {
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
   const favorites = useSelector((state: RootState) => state.ui.favorites);
   
-  // Estado para el filtro de favoritos
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // Cargar favoritos cuando se monta el componente y hay usuario
   useEffect(() => {
     if (currentUser) {
       dispatch(loadFavorites(currentUser.id));
     }
   }, [currentUser, dispatch]);
 
-  // Limpiar error de favoritos cuando se desmonta
   useEffect(() => {
     return () => {
       dispatch(clearFavoriteError());
     };
   }, [dispatch]);
 
-  // Mostrar resultados de búsqueda o todas las recetas
   const displayRecipes = useMemo(() => {
     let filteredRecipes = results.length > 0 
       ? RECIPES.filter(recipe => results.includes(recipe.id))
       : RECIPES;
 
-    // Aplicar filtro de favoritos si está activo
     if (showFavoritesOnly && currentUser) {
       filteredRecipes = filteredRecipes.filter(recipe => 
         favorites.includes(recipe.id)
@@ -67,14 +63,14 @@ export default function RecipesScreen() {
     return filteredRecipes;
   }, [results, showFavoritesOnly, favorites, currentUser]);
 
-  const handleRecipePress = (recipeId: string) => {
+  const handleRecipePress = useCallback((recipeId: string) => {
     navigation.navigate('RecipeDetail', { 
       id: recipeId,
       title: RECIPES.find(r => r.id === recipeId)?.title
     });
-  };
+  }, [navigation]);
 
-  const toggleFavoritesFilter = () => {
+  const toggleFavoritesFilter = useCallback(() => {
     if (!currentUser) {
       Alert.alert(
         'Inicia sesión',
@@ -91,14 +87,54 @@ export default function RecipesScreen() {
     }
     
     setShowFavoritesOnly(!showFavoritesOnly);
-  };
+  }, [currentUser, showFavoritesOnly, navigation]);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setShowFavoritesOnly(false);
-  };
+  }, []);
 
   const isLoggedIn = !!currentUser;
   const hasActiveFilters = showFavoritesOnly;
+
+  const renderEmptyState = useCallback(() => {
+    if (showFavoritesOnly && isLoggedIn) {
+      return (
+        <EmptyState
+          icon="heart-dislike"
+          title="No tienes recetas favoritas"
+          subtitle="Marca algunas recetas como favoritas para verlas aquí"
+          actionButton={
+            <CustomButton
+              text="Explorar recetas"
+              onPress={() => setShowFavoritesOnly(false)}
+              variant="outline"
+              style={styles.exploreButton}
+            />
+          }
+          style={styles.emptyState}
+        />
+      );
+    }
+
+    if (results.length > 0) {
+      return (
+        <EmptyState
+          icon="search-outline"
+          title="No se encontraron recetas con esos ingredientes"
+          subtitle="Intenta con otros ingredientes o elimina algunos filtros"
+          style={styles.emptyState}
+        />
+      );
+    }
+
+    return (
+      <EmptyState
+        icon="restaurant-outline"
+        title="No hay recetas disponibles"
+        style={styles.emptyState}
+      />
+    );
+  }, [showFavoritesOnly, isLoggedIn, results.length]);
 
   return (
     <View style={{ flex: 1, backgroundColor }}>
@@ -107,7 +143,6 @@ export default function RecipesScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header con título y filtros */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             {results.length > 0 ? (
@@ -132,7 +167,6 @@ export default function RecipesScreen() {
             )}
           </View>
           
-          {/* Botón de filtro de favoritos */}
           {isLoggedIn && (
             <TouchableOpacity
               style={[
@@ -158,7 +192,6 @@ export default function RecipesScreen() {
           )}
         </View>
 
-        {/* Indicadores de filtros activos */}
         {hasActiveFilters && (
           <View style={styles.activeFiltersContainer}>
             <Text style={[styles.activeFiltersTitle, { color: colors.textPrimary }]}>
@@ -167,56 +200,36 @@ export default function RecipesScreen() {
             
             <View style={styles.activeFilters}>
               {showFavoritesOnly && (
-                <View style={[
-                  styles.activeFilterChip,
-                  { backgroundColor: themeColor + '20', borderColor: themeColor }
-                ]}>
-                  <Ionicons name="heart" size={14} color={themeColor} />
-                  <Text style={[styles.activeFilterText, { color: themeColor }]}>
-                    Solo favoritos ({favorites.length})
-                  </Text>
-                  <TouchableOpacity 
-                    onPress={() => setShowFavoritesOnly(false)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons name="close-circle" size={16} color={themeColor} />
-                  </TouchableOpacity>
-                </View>
+                <FilterChip
+                  label={`Solo favoritos (${favorites.length})`}
+                  icon="heart"
+                  color={themeColor}
+                  onRemove={() => setShowFavoritesOnly(false)}
+                />
               )}
               
-              {hasActiveFilters && (
-                <TouchableOpacity 
-                  style={styles.clearAllButton}
-                  onPress={clearAllFilters}
-                >
-                  <Text style={[styles.clearAllText, { color: themeColor }]}>
-                    Limpiar todos
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity 
+                style={styles.clearAllButton}
+                onPress={clearAllFilters}
+              >
+                <Text style={[styles.clearAllText, { color: themeColor }]}>
+                  Limpiar todos
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Información del usuario */}
-        {isLoggedIn && (
-          <View style={[styles.userInfoCard, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-            <View style={styles.userInfoRow}>
-              <Ionicons name="person-circle" size={20} color={themeColor} />
-              <Text style={[styles.userInfoText, { color: colors.textPrimary }]}>
-                Hola, {currentUser?.name}
-              </Text>
-            </View>
-            <View style={styles.userInfoRow}>
-              <Ionicons name="heart" size={16} color="#FF6B6B" />
-              <Text style={[styles.favoriteCount, { color: colors.gray }]}>
-                Tienes {favorites.length} receta{favorites.length !== 1 ? 's' : ''} favorita{favorites.length !== 1 ? 's' : ''}
-              </Text>
-            </View>
-          </View>
+        {isLoggedIn && currentUser && (
+          <UserInfoCard
+            name={currentUser.name}
+            favoritesCount={favorites.length}
+            themeColor={themeColor}
+            colors={colors}
+            style={styles.userInfoCard}
+          />
         )}
 
-        {/* Lista de recetas */}
         <View style={styles.recipesList}>
           {displayRecipes.length > 0 ? (
             <>
@@ -230,50 +243,17 @@ export default function RecipesScreen() {
                   key={recipe.id}
                   title={recipe.title}
                   priceTag={recipe.priceTag}
-                  onPress={() => handleRecipePress(recipe.id)}
+                  onPress={handleRecipePress}
                   recipeId={recipe.id}
                   style={styles.recipeCard}
                 />
               ))}
             </>
           ) : (
-            <View style={[styles.emptyState, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-              <Ionicons 
-                name={showFavoritesOnly ? "heart-dislike" : "restaurant-outline"} 
-                size={48} 
-                color={colors.gray} 
-                style={styles.emptyIcon}
-              />
-              <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
-                {showFavoritesOnly 
-                  ? 'No tienes recetas favoritas'
-                  : results.length > 0 
-                    ? 'No se encontraron recetas con esos ingredientes'
-                    : 'No hay recetas disponibles'}
-              </Text>
-              
-              {showFavoritesOnly && isLoggedIn ? (
-                <>
-                  <Text style={[styles.emptySubtext, { color: colors.gray }]}>
-                    Marca algunas recetas como favoritas para verlas aquí
-                  </Text>
-                  <CustomButton
-                    text="Explorar recetas"
-                    onPress={() => setShowFavoritesOnly(false)}
-                    variant="outline"
-                    style={styles.exploreButton}
-                  />
-                </>
-              ) : results.length > 0 ? (
-                <Text style={[styles.emptySubtext, { color: colors.gray }]}>
-                  Intenta con otros ingredientes o elimina algunos filtros
-                </Text>
-              ) : null}
-            </View>
+            renderEmptyState()
           )}
         </View>
 
-        {/* Sugerencia para usuarios no logueados */}
         {!isLoggedIn && (
           <View style={[styles.loginPrompt, { backgroundColor: colors.cardBg + '80', borderColor: colors.border }]}>
             <Text style={[styles.loginPromptText, { color: colors.textPrimary }]}>
@@ -345,20 +325,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  activeFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  activeFilterText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginRight: 4,
-  },
   clearAllButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -369,24 +335,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   userInfoCard: {
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     marginBottom: 16,
-  },
-  userInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  userInfoText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  favoriteCount: {
-    marginLeft: 6,
-    fontSize: 13,
   },
   recipesList: {
     gap: 12,
@@ -400,26 +349,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyState: {
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-    opacity: 0.5,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    textAlign: 'center',
-    fontSize: 14,
-    marginBottom: 16,
+    marginVertical: 20,
   },
   exploreButton: {
     marginTop: 8,

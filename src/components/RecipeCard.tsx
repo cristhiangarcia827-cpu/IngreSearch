@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -6,28 +6,35 @@ import {
   TouchableOpacity,
   ViewStyle 
 } from 'react-native';
-import { useTheme } from '../hooks/useTheme'; // Añadir import
+import { useTheme } from '../hooks/useTheme';
 import FavoriteButton from './FavoriteButton';
 
 type Props = {
   title: string;
   priceTag: 'bajo' | 'medio' | 'alto';
-  onPress: () => void;
+  onPress: (recipeId: string) => void;
   recipeId: string;
   style?: ViewStyle;
 };
 
-export default function RecipeCard({ 
+const RecipeCard = memo(function RecipeCard({ 
   title, 
   priceTag, 
   onPress, 
   recipeId,
   style 
 }: Props) {
-  const { colors } = useTheme(); // Usar hook
+  const { colors } = useTheme();
   
-  const tagColor = priceTag === 'bajo' ? colors.savingsPrimary : 
-                   priceTag === 'medio' ? colors.primary : '#8A2BE2';
+  const tagColor = useMemo(() => 
+    priceTag === 'bajo' ? colors.savingsPrimary : 
+    priceTag === 'medio' ? colors.primary : '#8A2BE2',
+    [priceTag, colors.savingsPrimary, colors.primary]
+  );
+
+  const handlePress = useCallback(() => {
+    onPress(recipeId);
+  }, [onPress, recipeId]);
 
   return (
     <TouchableOpacity 
@@ -39,7 +46,7 @@ export default function RecipeCard({
           borderColor: colors.border 
         }
       ]} 
-      onPress={onPress}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <View style={[styles.tag, { backgroundColor: tagColor }]} />
@@ -56,7 +63,7 @@ export default function RecipeCard({
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: { 
@@ -90,3 +97,5 @@ const styles = StyleSheet.create({
     fontSize: 14 
   },
 });
+
+export default RecipeCard;

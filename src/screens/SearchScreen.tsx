@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -12,18 +12,19 @@ import { CompositeNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useSelector, useDispatch } from 'react-redux';
-import { RootStackParamList } from '../navigation/RootNavigator';
-import { TabsParamList } from '../navigation/TabsNavigator';
+import { Ionicons } from '@expo/vector-icons';
 import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import RecipeCard from '../components/RecipeCard';
+import FilterChip from '../components/FilterChip';
 import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
+import { RootStackParamList } from '../navigation/RootNavigator';
+import { TabsParamList } from '../navigation/TabsNavigator';
 import { setIngredients, setResults } from '../store/slices/searchSlice';
 import { loadFavorites } from '../store/slices/uiSlice';
 import type { RootState, AppDispatch } from '../store';
-import type { Recipe } from '../data/recipes';
 
 type SearchScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList, 'Tabs'>,
@@ -34,30 +35,21 @@ export default function SearchScreen() {
   const navigation = useNavigation<SearchScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
   const { colors, themeColor, backgroundColor } = useTheme();
-
-  // Redux state
   const searchState = useSelector((state: RootState) => state.search);
   const mode = useSelector((state: RootState) => state.ui.mode);
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
-
-  // Estado local para búsqueda
   const [searchQuery, setSearchQuery] = useState(searchState.ingredients);
   const [selectedPrice, setSelectedPrice] = useState<('bajo' | 'medio' | 'alto')[]>([]);
-
-  // Opciones de precio
   const priceOptions: ('bajo' | 'medio' | 'alto')[] = ['bajo', 'medio', 'alto'];
 
-  // Cargar favoritos cuando se monta el componente y hay usuario
   useEffect(() => {
     if (currentUser) {
       dispatch(loadFavorites(currentUser.id));
     }
   }, [currentUser, dispatch]);
 
-  // Filtrar recetas
   const filteredRecipes = useMemo(() => {
     return RECIPES.filter(recipe => {
-      // Filtro por texto de búsqueda
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = 
@@ -67,12 +59,10 @@ export default function SearchScreen() {
         if (!matchesSearch) return false;
       }
 
-      // Filtro por precio
       if (selectedPrice.length > 0 && !selectedPrice.includes(recipe.priceTag)) {
         return false;
       }
 
-      // Filtro por modo ahorro
       if (mode === 'ahorro' && recipe.priceTag !== 'bajo') {
         return false;
       }
@@ -81,16 +71,15 @@ export default function SearchScreen() {
     });
   }, [searchQuery, selectedPrice, mode]);
 
-  // Manejar selección de filtros de precio
-  const togglePriceFilter = (price: 'bajo' | 'medio' | 'alto') => {
+  const togglePriceFilter = useCallback((price: 'bajo' | 'medio' | 'alto') => {
     setSelectedPrice(prev => 
       prev.includes(price) 
         ? prev.filter(p => p !== price)
         : [...prev, price]
     );
-  };
+  }, []);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     if (!searchQuery.trim() && selectedPrice.length === 0) {
       Alert.alert(
         'Búsqueda vacía',
@@ -102,44 +91,50 @@ export default function SearchScreen() {
     dispatch(setIngredients(searchQuery));
     dispatch(setResults(filteredRecipes.map(r => r.id)));
     
-    // Navegar al tab de Recetas usando el tipo compuesto
     navigation.navigate('Tabs', { screen: 'Recetas' } as any);
-  };
+  }, [searchQuery, selectedPrice, filteredRecipes, dispatch, navigation]);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedPrice([]);
     dispatch(setIngredients(''));
     dispatch(setResults([]));
-  };
+  }, [dispatch]);
 
-  const handleRecipePress = (recipeId: string) => {
+  const handleRecipePress = useCallback((recipeId: string) => {
     navigation.navigate('RecipeDetail', { 
       id: recipeId,
       title: RECIPES.find(r => r.id === recipeId)?.title
     });
-  };
+  }, [navigation]);
 
-  const handleQuickSearch = (ingredient: string) => {
+  const handleQuickSearch = useCallback((ingredient: string) => {
     setSearchQuery(prev => {
       const current = prev.trim();
       if (current === '') return ingredient;
       return `${current}, ${ingredient}`;
     });
-  };
+  }, []);
 
-  // Ingredientes comunes para búsqueda rápida
   const commonIngredients = ['arroz', 'huevo', 'tomate', 'pasta', 'ajo', 'lechuga', 'pollo'];
-
   const hasActiveFilters = searchQuery.trim() !== '' || selectedPrice.length > 0;
 
+  const getPriceColor = useCallback((price: 'bajo' | 'medio' | 'alto') => {
+    switch(price) {
+      case 'bajo': return colors.savingsPrimary;
+      case 'medio': return colors.primary;
+      case 'alto': return '#8A2BE2';
+      default: return colors.primary;
+    }
+  }, [colors]);
+
   return (
+    <View style={{ flex: 1, backgroundColor }}>
       <ScrollView 
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <SectionTitle 
             text="Buscar Recetas" 
@@ -149,7 +144,6 @@ export default function SearchScreen() {
           />
         </View>
 
-        {/* Barra de búsqueda */}
         <View style={styles.searchSection}>
           <CustomInput
             placeholder="Ej: arroz, huevo, tomate..."
@@ -165,7 +159,6 @@ export default function SearchScreen() {
           />
         </View>
 
-        {/* Ingredientes rápidos */}
         <View style={[styles.quickSearchSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: themeColor }]}>
             Ingredientes comunes
@@ -188,7 +181,6 @@ export default function SearchScreen() {
           </View>
         </View>
 
-        {/* Filtros de precio */}
         <View style={[styles.filterSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: themeColor }]}>
             Filtro por Precio
@@ -196,13 +188,7 @@ export default function SearchScreen() {
           <View style={styles.filterOptions}>
             {priceOptions.map(price => {
               const isSelected = selectedPrice.includes(price);
-              let priceColor = '';
-              
-              switch(price) {
-                case 'bajo': priceColor = colors.savingsPrimary; break;
-                case 'medio': priceColor = colors.primary; break;
-                case 'alto': priceColor = '#8A2BE2'; break;
-              }
+              const priceColor = getPriceColor(price);
               
               return (
                 <TouchableOpacity
@@ -230,7 +216,6 @@ export default function SearchScreen() {
           </View>
         </View>
 
-        {/* Resultados en tiempo real */}
         <View style={[styles.resultsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <View style={styles.resultsHeader}>
             <Text style={[styles.sectionTitle, { color: themeColor }]}>
@@ -244,6 +229,28 @@ export default function SearchScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {hasActiveFilters && (
+            <View style={styles.activeFilters}>
+              {searchQuery.trim() && (
+                <FilterChip
+                  label={`Buscar: ${searchQuery}`}
+                  icon="search"
+                  color={themeColor}
+                  onRemove={() => setSearchQuery('')}
+                />
+              )}
+              {selectedPrice.map(price => (
+                <FilterChip
+                  key={price}
+                  label={`Precio: ${price}`}
+                  icon="pricetag"
+                  color={getPriceColor(price)}
+                  onRemove={() => setSelectedPrice(prev => prev.filter(p => p !== price))}
+                />
+              ))}
+            </View>
+          )}
 
           {filteredRecipes.length === 0 ? (
             <View style={[styles.emptyState, { backgroundColor: colors.lightGray }]}>
@@ -260,7 +267,7 @@ export default function SearchScreen() {
                   key={recipe.id}
                   title={recipe.title}
                   priceTag={recipe.priceTag}
-                  onPress={() => handleRecipePress(recipe.id)}
+                  onPress={handleRecipePress}
                   recipeId={recipe.id}
                   style={styles.recipeCard}
                 />
@@ -278,6 +285,7 @@ export default function SearchScreen() {
           )}
         </View>
       </ScrollView>
+    </View>
   );
 }
 
@@ -372,6 +380,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textDecorationLine: 'underline',
+  },
+  activeFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
   },
   emptyState: {
     padding: 32,
