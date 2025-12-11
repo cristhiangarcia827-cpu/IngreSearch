@@ -3,18 +3,22 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import searchReducer from './slices/searchSlice';
 import uiReducer from './slices/uiSlice';
+import recipesReducer from './slices/recipesSlice';
 
-// Configuración de persistencia
+
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
   whitelist: ['ui'],
-  timeout: 10000, // 10 segundos timeout
+  timeout: 10000,
+  serialize: true,
+  deserialize: true,
 };
 
 const rootReducer = combineReducers({
   search: searchReducer,
   ui: uiReducer,
+  recipes: recipesReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
@@ -25,12 +29,18 @@ export const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
+        ignoredPaths: ['register'],
+      },
+      immutableCheck: {
+        warnAfter: 100,
       },
     }),
+  devTools: process.env.NODE_ENV !== 'production',
 });
 
 export const persistor = persistStore(store);
 
-// Tipos TypeScript
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+export * from './selectors';

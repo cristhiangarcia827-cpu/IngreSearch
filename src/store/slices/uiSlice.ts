@@ -28,7 +28,7 @@ const initialState: UiState = {
   systemColorScheme: 'light',
 };
 
-// Thunk para cargar favoritos desde Supabase
+
 export const loadFavorites = createAsyncThunk(
   'ui/loadFavorites',
   async (userId: string, { rejectWithValue }) => {
@@ -50,7 +50,7 @@ export const loadFavorites = createAsyncThunk(
   }
 );
 
-// Thunk para agregar favorito
+
 export const addFavoriteToDB = createAsyncThunk(
   'ui/addFavoriteToDB',
   async ({ userId, recipeId }: { userId: string; recipeId: string }, { rejectWithValue }) => {
@@ -75,7 +75,7 @@ export const addFavoriteToDB = createAsyncThunk(
   }
 );
 
-// Thunk para remover favorito
+
 export const removeFavoriteFromDB = createAsyncThunk(
   'ui/removeFavoriteFromDB',
   async ({ userId, recipeId }: { userId: string; recipeId: string }, { rejectWithValue }) => {
@@ -120,7 +120,6 @@ const uiSlice = createSlice({
     clearFavoriteError(state) {
       state.favoriteError = null;
     },
-    // Nuevas acciones para tema
     setColorTheme(state, action: PayloadAction<ColorTheme>) {
       state.colorTheme = action.payload;
     },
@@ -139,7 +138,7 @@ const uiSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Cargar favoritos
+
       .addCase(loadFavorites.pending, (state) => {
         state.loadingFavorites = true;
         state.favoriteError = null;
@@ -153,7 +152,7 @@ const uiSlice = createSlice({
         state.favoriteError = action.payload as string;
         state.favorites = [];
       })
-      // Agregar favorito
+
       .addCase(addFavoriteToDB.pending, (state) => {
         state.favoriteError = null;
       })
@@ -165,7 +164,7 @@ const uiSlice = createSlice({
       .addCase(addFavoriteToDB.rejected, (state, action) => {
         state.favoriteError = action.payload as string;
       })
-      // Remover favorito
+
       .addCase(removeFavoriteFromDB.pending, (state) => {
         state.favoriteError = null;
       })

@@ -20,8 +20,15 @@ import UserInfoCard from '../components/UserInfoCard';
 import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
-import { loadFavorites, clearFavoriteError } from '../store/slices/uiSlice';
-import type { RootState, AppDispatch } from '../store';
+import { loadFavorites, clearFavoriteError, setMode, toggleMode } from '../store/slices/uiSlice';
+import { clearFilteredRecipes, resetAllFilters } from '../store/slices/recipesSlice';
+import {
+  selectRecipesScreenData,
+  selectFavorites,
+  selectFavoriteCount,
+  selectIsSavingsMode
+} from '../store/selectors';
+import type { AppDispatch } from '../store';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
@@ -30,12 +37,20 @@ export default function RecipesScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { colors, themeColor, backgroundColor } = useTheme();
   
-  const { ingredients, results } = useSelector((state: RootState) => state.search);
-  const mode = useSelector((state: RootState) => state.ui.mode);
-  const currentUser = useSelector((state: RootState) => state.ui.currentUser);
-  const favorites = useSelector((state: RootState) => state.ui.favorites);
+  const {
+    ingredients,
+    results,
+    mode,
+    currentUser,
+    isLoggedIn,
+    favorites,
+    favoriteCount
+  } = useSelector(selectRecipesScreenData);
+  
+  const isSavingsMode = useSelector(selectIsSavingsMode);
   
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showSavingsOnly, setShowSavingsOnly] = useState(isSavingsMode);
 
   useEffect(() => {
     if (currentUser) {
@@ -46,22 +61,33 @@ export default function RecipesScreen() {
   useEffect(() => {
     return () => {
       dispatch(clearFavoriteError());
+      dispatch(clearFilteredRecipes());
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    setShowSavingsOnly(isSavingsMode);
+  }, [isSavingsMode]);
 
   const displayRecipes = useMemo(() => {
     let filteredRecipes = results.length > 0 
       ? RECIPES.filter(recipe => results.includes(recipe.id))
       : RECIPES;
 
-    if (showFavoritesOnly && currentUser) {
+    if (showFavoritesOnly && isLoggedIn) {
       filteredRecipes = filteredRecipes.filter(recipe => 
         favorites.includes(recipe.id)
       );
     }
 
+    if (showSavingsOnly) {
+      filteredRecipes = filteredRecipes.filter(recipe => 
+        recipe.priceTag === 'bajo'
+      );
+    }
+
     return filteredRecipes;
-  }, [results, showFavoritesOnly, favorites, currentUser]);
+  }, [results, showFavoritesOnly, showSavingsOnly, favorites, isLoggedIn]);
 
   const handleRecipePress = useCallback((recipeId: string) => {
     navigation.navigate('RecipeDetail', { 
@@ -71,7 +97,7 @@ export default function RecipesScreen() {
   }, [navigation]);
 
   const toggleFavoritesFilter = useCallback(() => {
-    if (!currentUser) {
+    if (!isLoggedIn) {
       Alert.alert(
         'Inicia sesión',
         'Debes iniciar sesión para ver tus recetas favoritas',
@@ -87,14 +113,27 @@ export default function RecipesScreen() {
     }
     
     setShowFavoritesOnly(!showFavoritesOnly);
-  }, [currentUser, showFavoritesOnly, navigation]);
+  }, [isLoggedIn, showFavoritesOnly, navigation]);
+
+  const toggleSavingsFilter = useCallback(() => {
+    const newSavingsMode = !showSavingsOnly;
+    setShowSavingsOnly(newSavingsMode);
+    
+    if (newSavingsMode) {
+      dispatch(setMode('ahorro'));
+    } else {
+      dispatch(setMode('normal'));
+    }
+  }, [showSavingsOnly, dispatch]);
 
   const clearAllFilters = useCallback(() => {
     setShowFavoritesOnly(false);
-  }, []);
+    setShowSavingsOnly(false);
+    dispatch(setMode('normal'));
+    dispatch(resetAllFilters());
+  }, [dispatch]);
 
-  const isLoggedIn = !!currentUser;
-  const hasActiveFilters = showFavoritesOnly;
+  const hasActiveFilters = showFavoritesOnly || showSavingsOnly;
 
   const renderEmptyState = useCallback(() => {
     if (showFavoritesOnly && isLoggedIn) {
@@ -107,6 +146,28 @@ export default function RecipesScreen() {
             <CustomButton
               text="Explorar recetas"
               onPress={() => setShowFavoritesOnly(false)}
+              variant="outline"
+              style={styles.exploreButton}
+            />
+          }
+          style={styles.emptyState}
+        />
+      );
+    }
+
+    if (showSavingsOnly) {
+      return (
+        <EmptyState
+          icon="wallet-outline"
+          title="No hay recetas económicas disponibles"
+          subtitle="Pronto agregaremos más recetas económicas"
+          actionButton={
+            <CustomButton
+              text="Ver todas las recetas"
+              onPress={() => {
+                setShowSavingsOnly(false);
+                dispatch(setMode('normal'));
+              }}
               variant="outline"
               style={styles.exploreButton}
             />
@@ -134,7 +195,7 @@ export default function RecipesScreen() {
         style={styles.emptyState}
       />
     );
-  }, [showFavoritesOnly, isLoggedIn, results.length]);
+  }, [showFavoritesOnly, showSavingsOnly, isLoggedIn, results.length, dispatch]);
 
   return (
     <View style={{ flex: 1, backgroundColor }}>
@@ -166,13 +227,42 @@ export default function RecipesScreen() {
               />
             )}
           </View>
-          
+        </View>
+        <View style={styles.filterButtonsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              showSavingsOnly && styles.filterButtonActive,
+              { 
+                borderColor: colors.savingsPrimary,
+                backgroundColor: showSavingsOnly ? colors.savingsPrimary : 'transparent'
+              }
+            ]}
+            onPress={toggleSavingsFilter}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={showSavingsOnly ? "wallet" : "wallet-outline"} 
+              size={20} 
+              color={showSavingsOnly ? '#fff' : colors.savingsPrimary} 
+            />
+            <Text style={[
+              styles.filterButtonText,
+              { color: showSavingsOnly ? '#fff' : colors.savingsPrimary }
+            ]}>
+              Modo Ahorro
+            </Text>
+          </TouchableOpacity>
+
           {isLoggedIn && (
             <TouchableOpacity
               style={[
-                styles.favoriteFilterButton,
-                showFavoritesOnly && styles.favoriteFilterButtonActive,
-                { borderColor: themeColor }
+                styles.filterButton,
+                showFavoritesOnly && styles.filterButtonActive,
+                { 
+                  borderColor: '#FF6B6B',
+                  backgroundColor: showFavoritesOnly ? '#FF6B6B' : 'transparent'
+                }
               ]}
               onPress={toggleFavoritesFilter}
               activeOpacity={0.7}
@@ -180,11 +270,11 @@ export default function RecipesScreen() {
               <Ionicons 
                 name={showFavoritesOnly ? "heart" : "heart-outline"} 
                 size={20} 
-                color={showFavoritesOnly ? '#fff' : themeColor} 
+                color={showFavoritesOnly ? '#fff' : '#FF6B6B'} 
               />
               <Text style={[
-                styles.favoriteFilterText,
-                { color: showFavoritesOnly ? '#fff' : themeColor }
+                styles.filterButtonText,
+                { color: showFavoritesOnly ? '#fff' : '#FF6B6B' }
               ]}>
                 Favoritos
               </Text>
@@ -199,11 +289,23 @@ export default function RecipesScreen() {
             </Text>
             
             <View style={styles.activeFilters}>
+              {showSavingsOnly && (
+                <FilterChip
+                  label="Modo ahorro activado"
+                  icon="wallet"
+                  color={colors.savingsPrimary}
+                  onRemove={() => {
+                    setShowSavingsOnly(false);
+                    dispatch(setMode('normal'));
+                  }}
+                />
+              )}
+              
               {showFavoritesOnly && (
                 <FilterChip
-                  label={`Solo favoritos (${favorites.length})`}
+                  label={`Solo favoritos (${favoriteCount})`}
                   icon="heart"
-                  color={themeColor}
+                  color="#FF6B6B"
                   onRemove={() => setShowFavoritesOnly(false)}
                 />
               )}
@@ -220,10 +322,19 @@ export default function RecipesScreen() {
           </View>
         )}
 
+        {showSavingsOnly && (
+          <View style={[styles.savingsInfo, { backgroundColor: colors.savingsBg + '80', borderColor: colors.savingsPrimary }]}>
+            <Ionicons name="information-circle" size={20} color={colors.savingsPrimary} />
+            <Text style={[styles.savingsInfoText, { color: colors.textPrimary }]}>
+              <Text style={{ fontWeight: 'bold', color: colors.savingsPrimary }}>Modo ahorro:</Text> Mostrando solo recetas económicas (precio bajo)
+            </Text>
+          </View>
+        )}
+
         {isLoggedIn && currentUser && (
           <UserInfoCard
             name={currentUser.name}
-            favoritesCount={favorites.length}
+            favoritesCount={favoriteCount}
             themeColor={themeColor}
             colors={colors}
             style={styles.userInfoCard}
@@ -236,6 +347,8 @@ export default function RecipesScreen() {
               <Text style={[styles.resultsCount, { color: colors.gray }]}>
                 Mostrando {displayRecipes.length} receta{displayRecipes.length !== 1 ? 's' : ''}
                 {showFavoritesOnly && ' favoritas'}
+                {showSavingsOnly && ' económicas'}
+                {showFavoritesOnly && showSavingsOnly && ' favoritas y económicas'}
               </Text>
               
               {displayRecipes.map(recipe => (
@@ -252,6 +365,32 @@ export default function RecipesScreen() {
           ) : (
             renderEmptyState()
           )}
+        </View>
+
+        <View style={[styles.priceInfo, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
+          <Text style={[styles.priceInfoTitle, { color: themeColor }]}>
+            Clasificación por precio:
+          </Text>
+          <View style={styles.priceCategories}>
+            <View style={styles.priceCategory}>
+              <View style={[styles.priceDot, { backgroundColor: colors.savingsPrimary }]} />
+              <Text style={[styles.priceLabel, { color: colors.textPrimary }]}>
+                Bajo: Recetas económicas
+              </Text>
+            </View>
+            <View style={styles.priceCategory}>
+              <View style={[styles.priceDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.priceLabel, { color: colors.textPrimary }]}>
+                Medio: Precio regular
+              </Text>
+            </View>
+            <View style={styles.priceCategory}>
+              <View style={[styles.priceDot, { backgroundColor: '#8A2BE2' }]} />
+              <Text style={[styles.priceLabel, { color: colors.textPrimary }]}>
+                Alto: Ingredientes especiales
+              </Text>
+            </View>
+          </View>
         </View>
 
         {!isLoggedIn && (
@@ -293,21 +432,28 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  favoriteFilterButton: {
+  filterButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+    flexWrap: 'wrap',
+  },
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    marginLeft: 8,
+    flex: 1,
+    minWidth: 140,
+    justifyContent: 'center',
+    gap: 8,
   },
-  favoriteFilterButtonActive: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF6B6B',
+  filterButtonActive: {
+    borderWidth: 2,
   },
-  favoriteFilterText: {
-    marginLeft: 6,
+  filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
   },
@@ -334,11 +480,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textDecorationLine: 'underline',
   },
+  savingsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 8,
+  },
+  savingsInfoText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   userInfoCard: {
     marginBottom: 16,
   },
   recipesList: {
     gap: 12,
+    marginBottom: 24,
   },
   resultsCount: {
     fontSize: 14,
@@ -354,8 +515,35 @@ const styles = StyleSheet.create({
   exploreButton: {
     marginTop: 8,
   },
+  priceInfo: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  priceInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  priceCategories: {
+    gap: 8,
+  },
+  priceCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  priceDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  priceLabel: {
+    fontSize: 14,
+  },
   loginPrompt: {
-    marginTop: 24,
+    marginTop: 16,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,

@@ -24,7 +24,21 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 import { TabsParamList } from '../navigation/TabsNavigator';
 import { setIngredients, setResults } from '../store/slices/searchSlice';
 import { loadFavorites } from '../store/slices/uiSlice';
-import type { RootState, AppDispatch } from '../store';
+import { 
+  filterRecipes,
+  setSearchQuery as setRecipesSearchQuery,
+  setSelectedPrice,
+  clearPriceFilters,
+  resetAllFilters
+} from '../store/slices/recipesSlice';
+import {
+  selectSearchScreenData,
+  selectIsSavingsMode,
+  selectAllRecipes,
+  selectSelectedPrice,
+  selectSearchQuery as selectRecipesSearchQuery
+} from '../store/selectors';
+import type { AppDispatch } from '../store';
 
 type SearchScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList, 'Tabs'>,
@@ -35,12 +49,24 @@ export default function SearchScreen() {
   const navigation = useNavigation<SearchScreenNavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
   const { colors, themeColor, backgroundColor } = useTheme();
-  const searchState = useSelector((state: RootState) => state.search);
-  const mode = useSelector((state: RootState) => state.ui.mode);
-  const currentUser = useSelector((state: RootState) => state.ui.currentUser);
-  const [searchQuery, setSearchQuery] = useState(searchState.ingredients);
-  const [selectedPrice, setSelectedPrice] = useState<('bajo' | 'medio' | 'alto')[]>([]);
+  const {
+    ingredients,
+    mode,
+    currentUser,
+    isLoggedIn
+  } = useSelector(selectSearchScreenData);
+  const isSavingsMode = useSelector(selectIsSavingsMode);
+  const allRecipes = useSelector(selectAllRecipes);
+  const selectedPriceFromState = useSelector(selectSelectedPrice);
+  const recipesSearchQuery = useSelector(selectRecipesSearchQuery);
+  const [searchQuery, setSearchQuery] = useState(ingredients || recipesSearchQuery);
+  const [selectedPrice, setSelectedPriceLocal] = useState<('bajo' | 'medio' | 'alto')[]>(selectedPriceFromState);
+
   const priceOptions: ('bajo' | 'medio' | 'alto')[] = ['bajo', 'medio', 'alto'];
+
+  useEffect(() => {
+    setSelectedPriceLocal(selectedPriceFromState);
+  }, [selectedPriceFromState]);
 
   useEffect(() => {
     if (currentUser) {
@@ -49,7 +75,7 @@ export default function SearchScreen() {
   }, [currentUser, dispatch]);
 
   const filteredRecipes = useMemo(() => {
-    return RECIPES.filter(recipe => {
+    return allRecipes.filter(recipe => {
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchesSearch = 
@@ -69,17 +95,18 @@ export default function SearchScreen() {
 
       return true;
     });
-  }, [searchQuery, selectedPrice, mode]);
+  }, [searchQuery, selectedPrice, mode, allRecipes]);
 
   const togglePriceFilter = useCallback((price: 'bajo' | 'medio' | 'alto') => {
-    setSelectedPrice(prev => 
-      prev.includes(price) 
-        ? prev.filter(p => p !== price)
-        : [...prev, price]
-    );
-  }, []);
+    const newSelectedPrice = selectedPrice.includes(price) 
+      ? selectedPrice.filter(p => p !== price)
+      : [...selectedPrice, price];
+    
+    setSelectedPriceLocal(newSelectedPrice);
+    dispatch(setSelectedPrice(newSelectedPrice));
+  }, [selectedPrice, dispatch]);
 
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() && selectedPrice.length === 0) {
       Alert.alert(
         'Búsqueda vacía',
@@ -89,32 +116,43 @@ export default function SearchScreen() {
     }
 
     dispatch(setIngredients(searchQuery));
-    dispatch(setResults(filteredRecipes.map(r => r.id)));
+    dispatch(setRecipesSearchQuery(searchQuery));
+    dispatch(filterRecipes({ 
+      ingredients: searchQuery, 
+      priceFilters: selectedPrice,
+      mode 
+    }));
+    const filteredIds = filteredRecipes.map(r => r.id);
+    dispatch(setResults(filteredIds));
     
     navigation.navigate('Tabs', { screen: 'Recetas' } as any);
-  }, [searchQuery, selectedPrice, filteredRecipes, dispatch, navigation]);
+  }, [searchQuery, selectedPrice, mode, filteredRecipes, dispatch, navigation]);
 
   const clearFilters = useCallback(() => {
     setSearchQuery('');
-    setSelectedPrice([]);
+    setSelectedPriceLocal([]);
+    
     dispatch(setIngredients(''));
     dispatch(setResults([]));
+    dispatch(setRecipesSearchQuery(''));
+    dispatch(resetAllFilters());
   }, [dispatch]);
 
   const handleRecipePress = useCallback((recipeId: string) => {
     navigation.navigate('RecipeDetail', { 
       id: recipeId,
-      title: RECIPES.find(r => r.id === recipeId)?.title
+      title: allRecipes.find(r => r.id === recipeId)?.title
     });
-  }, [navigation]);
+  }, [navigation, allRecipes]);
 
   const handleQuickSearch = useCallback((ingredient: string) => {
-    setSearchQuery(prev => {
-      const current = prev.trim();
-      if (current === '') return ingredient;
-      return `${current}, ${ingredient}`;
-    });
-  }, []);
+    const newSearchQuery = searchQuery.trim() === '' 
+      ? ingredient 
+      : `${searchQuery}, ${ingredient}`;
+    
+    setSearchQuery(newSearchQuery);
+    dispatch(setRecipesSearchQuery(newSearchQuery));
+  }, [searchQuery, dispatch]);
 
   const commonIngredients = ['arroz', 'huevo', 'tomate', 'pasta', 'ajo', 'lechuga', 'pollo'];
   const hasActiveFilters = searchQuery.trim() !== '' || selectedPrice.length > 0;
@@ -127,6 +165,17 @@ export default function SearchScreen() {
       default: return colors.primary;
     }
   }, [colors]);
+
+  const handleRemoveSearchQuery = useCallback(() => {
+    setSearchQuery('');
+    dispatch(setRecipesSearchQuery(''));
+  }, [dispatch]);
+
+  const handleRemovePriceFilter = useCallback((price: 'bajo' | 'medio' | 'alto') => {
+    const newSelectedPrice = selectedPrice.filter(p => p !== price);
+    setSelectedPriceLocal(newSelectedPrice);
+    dispatch(setSelectedPrice(newSelectedPrice));
+  }, [selectedPrice, dispatch]);
 
   return (
     <View style={{ flex: 1, backgroundColor }}>
@@ -154,7 +203,7 @@ export default function SearchScreen() {
           <CustomButton
             text="Buscar"
             onPress={handleSearch}
-            variant={mode === 'ahorro' ? 'savings' : 'primary'}
+            variant={isSavingsMode ? 'savings' : 'primary'}
             style={styles.searchButton}
           />
         </View>
@@ -224,7 +273,7 @@ export default function SearchScreen() {
             {hasActiveFilters && (
               <TouchableOpacity onPress={clearFilters}>
                 <Text style={[styles.clearButton, { color: themeColor }]}>
-                  Limpiar filtros
+                  Limpiar todo
                 </Text>
               </TouchableOpacity>
             )}
@@ -237,7 +286,7 @@ export default function SearchScreen() {
                   label={`Buscar: ${searchQuery}`}
                   icon="search"
                   color={themeColor}
-                  onRemove={() => setSearchQuery('')}
+                  onRemove={handleRemoveSearchQuery}
                 />
               )}
               {selectedPrice.map(price => (
@@ -246,7 +295,7 @@ export default function SearchScreen() {
                   label={`Precio: ${price}`}
                   icon="pricetag"
                   color={getPriceColor(price)}
-                  onRemove={() => setSelectedPrice(prev => prev.filter(p => p !== price))}
+                  onRemove={() => handleRemovePriceFilter(price)}
                 />
               ))}
             </View>
@@ -254,11 +303,20 @@ export default function SearchScreen() {
 
           {filteredRecipes.length === 0 ? (
             <View style={[styles.emptyState, { backgroundColor: colors.lightGray }]}>
+              <Ionicons name="search-outline" size={48} color={colors.gray} style={styles.emptyIcon} />
               <Text style={[styles.emptyText, { color: colors.textPrimary }]}>
                 {hasActiveFilters 
                   ? 'No se encontraron recetas con esos criterios'
                   : 'Ingresa ingredientes para buscar recetas'}
               </Text>
+              {hasActiveFilters && (
+                <TouchableOpacity 
+                  style={[styles.clearFiltersButton, { backgroundColor: themeColor }]}
+                  onPress={clearFilters}
+                >
+                  <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <View style={styles.resultsList}>
@@ -284,6 +342,21 @@ export default function SearchScreen() {
             </View>
           )}
         </View>
+
+        {!isLoggedIn && (
+          <View style={[styles.loginPrompt, { backgroundColor: colors.cardBg + '80', borderColor: colors.border }]}>
+            <Ionicons name="information-circle" size={24} color={themeColor} style={styles.loginIcon} />
+            <Text style={[styles.loginPromptText, { color: colors.textPrimary }]}>
+              Inicia sesión para guardar tus recetas favoritas y acceder a todas las funciones
+            </Text>
+            <CustomButton
+              text="Iniciar sesión"
+              onPress={() => navigation.navigate('Login')}
+              variant="outline"
+              style={styles.loginButton}
+            />
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -393,10 +466,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 12,
   },
+  emptyIcon: {
+    marginBottom: 16,
+    opacity: 0.5,
+  },
   emptyText: {
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '500',
+    marginBottom: 16,
+  },
+  clearFiltersButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  clearFiltersText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   resultsList: {
     gap: 12,
@@ -406,5 +494,24 @@ const styles = StyleSheet.create({
   },
   viewAllButton: {
     marginTop: 16,
+  },
+  loginPrompt: {
+    marginTop: 24,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  loginIcon: {
+    marginBottom: 12,
+  },
+  loginPromptText: {
+    textAlign: 'center',
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  loginButton: {
+    marginTop: 8,
   },
 });

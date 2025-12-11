@@ -26,12 +26,10 @@ export default function ProfileScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
   
-  // Obtener usuario actual de Redux
   const mode = useSelector((state: RootState) => state.ui.mode);
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
   const favorites = useSelector((state: RootState) => state.ui.favorites);
 
-  // Usar hook de tema
   const { colors, themeColor, backgroundColor, isDarkMode } = useTheme();
 
   const isLoggedIn = !!currentUser;
@@ -80,7 +78,6 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Información del usuario */}
         <View style={styles.userInfoSection}>
           <View style={styles.avatarContainer}>
             <View style={[styles.avatar, { backgroundColor: themeColor }]}>
@@ -109,7 +106,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Acciones de cuenta */}
         <View style={[styles.actionsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <SectionTitle 
             text="Cuenta" 
@@ -163,7 +159,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* Configuración de Tema - SIMPLIFICADA */}
         <View style={[styles.settingsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
           <SectionTitle 
             text="Modo de Visualización" 
@@ -172,7 +167,6 @@ export default function ProfileScreen() {
             size="small"
           />
           
-          {/* Switch para claro/oscuro */}
           <View style={[styles.themeToggleRow, { borderBottomColor: colors.border }]}>
             <View style={styles.themeToggleInfo}>
               <Ionicons 
@@ -202,7 +196,6 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* Indicador visual del tema actual */}
           <View style={styles.themePreview}>
             <View style={[
               styles.themePreviewLight, 
@@ -244,7 +237,6 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Estadísticas (solo para usuarios logueados) */}
         {isLoggedIn && (
           <View style={[styles.statsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <SectionTitle 
@@ -266,7 +258,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Recetas favoritas (solo para usuarios logueados) */}
         {isLoggedIn && favorites.length > 0 && (
           <View style={[styles.favoritesSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <SectionTitle 
