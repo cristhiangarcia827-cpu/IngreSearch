@@ -16,7 +16,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword } from '../utils/validation';
-import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
+import { useTheme } from '../hooks/useTheme';
 import { setCurrentUser } from '../store/slices/uiSlice';
 import { supabase } from '../lib/supabase';
 import type { RootState, AppDispatch } from '../store';
@@ -27,10 +27,8 @@ export default function EditProfileScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
   
-  // Usar hook de tema
   const { colors, themeColor, backgroundColor } = useTheme();
   
-  // Obtener usuario actual de Redux
   const mode = useSelector((state: RootState) => state.ui.mode);
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
   

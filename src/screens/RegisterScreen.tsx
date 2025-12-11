@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -15,7 +15,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid, isStrongPassword, doPasswordsMatch } from '../utils/validation';
-import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
+import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../lib/supabase';
 import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
@@ -26,7 +26,6 @@ export default function RegisterScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
   
-  // Usar hook de tema
   const { colors, themeColor, backgroundColor } = useTheme();
   
   const [formData, setFormData] = useState({
@@ -52,15 +51,15 @@ export default function RegisterScreen() {
 
   const [loading, setLoading] = useState(false);
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     if (touched[field as keyof typeof touched]) {
       validateField(field, value);
     }
-  };
+  }, [touched]);
 
-  const validateField = (field: string, value?: string) => {
+  const validateField = useCallback((field: string, value?: string) => {
     const currentValue = value !== undefined ? value : formData[field as keyof typeof formData];
     let validation;
 
@@ -85,14 +84,14 @@ export default function RegisterScreen() {
       ...prev, 
       [field]: validation.message || '' 
     }));
-  };
+  }, [formData]);
 
-  const handleFieldBlur = (field: string) => {
+  const handleFieldBlur = useCallback((field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     validateField(field);
-  };
+  }, [validateField]);
 
-  const validateFormData = () => {
+  const validateFormData = useCallback(() => {
     const newTouched = {
       name: true,
       email: true,
@@ -107,10 +106,10 @@ export default function RegisterScreen() {
 
     const isValid = Object.values(errors).every(error => error === '');
     return isValid;
-  };
+  }, [formData, errors, validateField]);
 
   // Función simple para hashear
-  const simpleHash = (password: string): string => {
+  const simpleHash = useCallback((password: string): string => {
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
       const char = password.charCodeAt(i);
@@ -118,7 +117,7 @@ export default function RegisterScreen() {
       hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
-  };
+  }, []);
 
   const handleRegister = async () => {
     if (!validateFormData()) {
@@ -135,20 +134,18 @@ export default function RegisterScreen() {
       console.log('Iniciando registro para:', formData.email);
 
       // 1. Primero verificar si el usuario ya existe
-      const { data: existingUser, error: checkError } = await supabase
+      const { data: existingUsers, error: checkError } = await supabase
         .from('users')
         .select('email')
-        .eq('email', formData.email)
-        .single();
+        .eq('email', formData.email);
 
-      if (existingUser) {
+      if (checkError) {
+        console.error('Error al verificar usuario:', checkError);
+      }
+      if (existingUsers && existingUsers.length > 0) {
         Alert.alert('Error', 'Este email ya está registrado.');
         setLoading(false);
         return;
-      }
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error al verificar usuario:', checkError);
       }
 
       // 2. Hashear la contraseña
@@ -163,6 +160,7 @@ export default function RegisterScreen() {
             name: formData.name,
             email: formData.email,
             password_hash: passwordHash,
+            created_at: new Date().toISOString()
           }
         ])
         .select();
@@ -200,15 +198,22 @@ export default function RegisterScreen() {
         ]
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en registro:', error);
-      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      if (error.code === 'PGRST116') {
+        Alert.alert('Error', 'Problema al verificar el email. Inténtalo de nuevo.');
+      } else {
+        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const hasErrors = Object.values(errors).some(error => error !== '');
+  const hasErrors = useMemo(() => 
+    Object.values(errors).some(error => error !== ''),
+    [errors]
+  );
 
   return (
     <KeyboardAvoidingView 

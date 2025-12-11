@@ -1,4 +1,3 @@
-// theme/colors.ts
 export const lightColors = {
   primary: '#FF7A00',
   savingsPrimary: '#2E8B57',
@@ -43,5 +42,4 @@ export const getColors = (theme: 'light' | 'dark') => {
   return theme === 'dark' ? darkColors : lightColors;
 };
 
-// Export por compatibilidad
 export const colors = lightColors;

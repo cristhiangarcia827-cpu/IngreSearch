@@ -1,4 +1,3 @@
-// hooks/useTheme.ts
 import { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useColorScheme } from 'react-native';
@@ -8,7 +7,7 @@ import { getColors, ColorTheme } from '../theme/colors';
 
 export const useTheme = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const systemColorScheme = useColorScheme(); // 'light' | 'dark' | null
+  const systemColorScheme = useColorScheme();
   const colorTheme = useSelector((state: RootState) => state.ui.colorTheme);
   const storedSystemScheme = useSelector((state: RootState) => state.ui.systemColorScheme);
   const mode = useSelector((state: RootState) => state.ui.mode);

@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RECIPES } from '../data/recipes';
 import SectionTitle from '../components/SectionTitle';
 import FavoriteButton from '../components/FavoriteButton';
-import { useTheme } from '../hooks/useTheme'; // Añadir import
+import { useTheme } from '../hooks/useTheme';
 import { loadFavorites } from '../store/slices/uiSlice';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import type { RootState, AppDispatch } from '../store';
@@ -23,7 +23,7 @@ export default function RecipeDetailScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const { id } = route.params;
   const recipe = RECIPES.find(r => r.id === id);
-  const { colors, themeColor, backgroundColor } = useTheme(); // Usar hook
+  const { colors, themeColor, backgroundColor } = useTheme();
   
   const currentUser = useSelector((state: RootState) => state.ui.currentUser);
 

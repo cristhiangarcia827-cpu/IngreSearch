@@ -5,7 +5,7 @@ import {
   TextStyle,
   View 
 } from 'react-native';
-import { useTheme } from '../hooks/useTheme'; // Añadir import
+import { useTheme } from '../hooks/useTheme'; 
 
 type Props = {
   text: string;
@@ -18,15 +18,14 @@ type Props = {
 
 export default function SectionTitle({ 
   text, 
-  color, // Si no se proporciona color, usar del tema
+  color, 
   align = 'center',
   size = 'medium',
   withDivider = false,
   style 
 }: Props) {
-  const { colors, themeColor } = useTheme(); // Usar hook
+  const { colors, themeColor } = useTheme(); 
   
-  // Usar color proporcionado o color del tema
   const titleColor = color || themeColor;
 
   const getFontSize = (): number => {

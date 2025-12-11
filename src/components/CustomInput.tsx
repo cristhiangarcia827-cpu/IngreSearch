@@ -108,10 +108,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputNormal: { 
-    // borderColor manejado inline
   },
   inputError: { 
-    // borderColor manejado inline
   },
   multilineInput: {
     minHeight: 80,

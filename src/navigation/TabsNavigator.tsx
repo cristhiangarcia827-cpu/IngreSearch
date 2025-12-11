@@ -19,7 +19,7 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 
 export default function TabsNavigator() {
   const insets = useSafeAreaInsets();
-  const { colors, isDarkMode } = useTheme(); // Usar hook
+  const { colors, isDarkMode } = useTheme();
   
   return (
     <Tabs.Navigator

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -16,7 +16,7 @@ import SectionTitle from '../components/SectionTitle';
 import CustomInput from '../components/CustomInput';
 import CustomButton from '../components/CustomButton';
 import { isRequired, isEmailValid } from '../utils/validation';
-import { useTheme } from '../hooks/useTheme'; // Usar hook de tema
+import { useTheme } from '../hooks/useTheme'; 
 import { supabase } from '../lib/supabase';
 import { loadFavorites, setCurrentUser } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store';
@@ -26,8 +26,6 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 export default function LoginScreen() {
   const navigation = useNavigation<NavProp>();
   const dispatch = useDispatch<AppDispatch>();
-  
-  // Usar hook de tema
   const { colors, themeColor, backgroundColor } = useTheme();
   
   const [formData, setFormData] = useState({
@@ -47,16 +45,15 @@ export default function LoginScreen() {
 
   const [loading, setLoading] = useState(false);
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Validación en tiempo real después de que el campo fue tocado
     if (touched[field as keyof typeof touched]) {
       validateField(field, value);
     }
-  };
+  }, [touched]);
 
-  const validateField = (field: string, value?: string) => {
+  const validateField = useCallback((field: string, value?: string) => {
     const currentValue = value !== undefined ? value : formData[field as keyof typeof formData];
     let validation;
 
@@ -75,14 +72,14 @@ export default function LoginScreen() {
       ...prev, 
       [field]: validation.message || '' 
     }));
-  };
+  }, [formData]);
 
-  const handleFieldBlur = (field: string) => {
+  const handleFieldBlur = useCallback((field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
     validateField(field);
-  };
+  }, [validateField]);
 
-  const validateFormData = () => {
+  const validateFormData = useCallback(() => {
     // Marcar todos los campos como tocados
     const newTouched = {
       email: true,
@@ -98,10 +95,10 @@ export default function LoginScreen() {
     // Verificar si no hay errores
     const isValid = Object.values(errors).every(error => error === '');
     return isValid;
-  };
+  }, [formData, errors, validateField]);
 
-  // Función simple para hashear (debe ser la misma que en RegisterScreen)
-  const simpleHash = (password: string): string => {
+  // Función simple para hashear
+  const simpleHash = useCallback((password: string): string => {
     let hash = 0;
     for (let i = 0; i < password.length; i++) {
       const char = password.charCodeAt(i);
@@ -109,7 +106,7 @@ export default function LoginScreen() {
       hash = hash & hash;
     }
     return Math.abs(hash).toString(36);
-  };
+  }, []);
 
   const handleLogin = async () => {
     if (!validateFormData()) {
@@ -129,75 +126,68 @@ export default function LoginScreen() {
       const passwordHash = simpleHash(formData.password);
 
       // 2. Buscar usuario en la base de datos
-      const { data: user, error } = await supabase
+      const { data: users, error } = await supabase
         .from('users')
         .select('id, name, email, password_hash')
         .eq('email', formData.email)
-        .eq('password_hash', passwordHash)
-        .single();
+        .eq('password_hash', passwordHash);
 
       if (error) {
         console.error('Error al buscar usuario:', error);
-        
-        if (error.code === 'PGRST116') {
-          // Usuario no encontrado
-          Alert.alert('Error', 'Email o contraseña incorrectos.');
-        } else {
-          Alert.alert('Error', 'Ocurrió un error al iniciar sesión.');
-        }
+        Alert.alert('Error', 'Ocurrió un error al iniciar sesión. Inténtalo de nuevo.');
         return;
       }
 
-      if (!user) {
+      // 3. Verificar si se encontró algún usuario
+      if (!users || users.length === 0) {
         Alert.alert('Error', 'Email o contraseña incorrectos.');
         return;
       }
 
+      // 4. Tomar el primer usuario (debería ser el único)
+      const user = users[0];
       console.log('Login exitoso para:', user.name);
 
-      // 3. Guardar usuario en Redux
+      // 5. Guardar usuario en Redux
       dispatch(setCurrentUser({
         id: user.id,
         name: user.name,
         email: user.email
       }));
+      
+      // 6. Cargar favoritos del usuario
       dispatch(loadFavorites(user.id));
 
-      // 4. Login exitoso
+      // 7. Login exitoso
       Alert.alert(
         '¡Bienvenido!', 
         `Hola ${user.name}, has iniciado sesión correctamente.`,
         [
           { 
             text: 'OK', 
-            onPress: () => navigation.navigate('Tabs') 
+            onPress: () => {
+              navigation.navigate('Tabs');
+            }
           }
         ]
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error en login:', error);
-      Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      if (error.code === 'PGRST116') {
+        Alert.alert('Error', 'Email o contraseña incorrectos.');
+      } else {
+        Alert.alert('Error', 'Ocurrió un error inesperado. Inténtalo de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert(
-      'Recuperar Contraseña',
-      'Se enviará un enlace de recuperación a tu email.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Enviar', onPress: () => {
-          // Aquí iría la lógica para recuperar contraseña
-          Alert.alert('Éxito', 'Se ha enviado el enlace de recuperación a tu email.');
-        }}
-      ]
-    );
-  };
-
-  const hasErrors = Object.values(errors).some(error => error !== '');
+  const hasErrors = useMemo(() => 
+    Object.values(errors).some(error => error !== ''),
+    [errors]
+  );
 
   return (
     <KeyboardAvoidingView 
@@ -247,14 +237,6 @@ export default function LoginScreen() {
             disabled={hasErrors}
             loading={loading}
             style={styles.loginButton}
-          />
-
-          <CustomButton
-            text="¿Olvidaste tu contraseña?"
-            onPress={handleForgotPassword}
-            variant="text"
-            fullWidth={false}
-            style={styles.forgotButton}
           />
 
           <View style={styles.separator}>

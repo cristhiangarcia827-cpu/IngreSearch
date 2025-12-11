@@ -19,7 +19,6 @@ import CustomButton from '../components/CustomButton';
 import RecipeCard from '../components/RecipeCard';
 import FilterChip from '../components/FilterChip';
 import { useTheme } from '../hooks/useTheme';
-import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { TabsParamList } from '../navigation/TabsNavigator';
 import { setIngredients, setResults } from '../store/slices/searchSlice';
@@ -28,7 +27,6 @@ import {
   filterRecipes,
   setSearchQuery as setRecipesSearchQuery,
   setSelectedPrice,
-  clearPriceFilters,
   resetAllFilters
 } from '../store/slices/recipesSlice';
 import {

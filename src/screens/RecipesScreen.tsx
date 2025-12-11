@@ -20,12 +20,10 @@ import UserInfoCard from '../components/UserInfoCard';
 import { useTheme } from '../hooks/useTheme';
 import { RECIPES } from '../data/recipes';
 import { RootStackParamList } from '../navigation/RootNavigator';
-import { loadFavorites, clearFavoriteError, setMode, toggleMode } from '../store/slices/uiSlice';
+import { loadFavorites, clearFavoriteError, setMode } from '../store/slices/uiSlice';
 import { clearFilteredRecipes, resetAllFilters } from '../store/slices/recipesSlice';
 import {
   selectRecipesScreenData,
-  selectFavorites,
-  selectFavoriteCount,
   selectIsSavingsMode
 } from '../store/selectors';
 import type { AppDispatch } from '../store';
