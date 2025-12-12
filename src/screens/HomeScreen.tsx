@@ -99,16 +99,7 @@ export default function HomeScreen() {
             align="left"
             size="large"
           />
-          <Text style={[styles.subtitle, { color: colors.gray }]}>
-            Descubre recetas deliciosas y económicas
-          </Text>
         </View>
-
-        <Image 
-          source={require('../assets/images/dish.png')} 
-          style={styles.image} 
-          resizeMode="contain"
-        />
 
         <View style={styles.featuredSection}>
           <View style={styles.featuredHeader}>
