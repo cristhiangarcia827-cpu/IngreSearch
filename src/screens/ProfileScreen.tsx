@@ -237,27 +237,6 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {isLoggedIn && (
-          <View style={[styles.statsSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
-            <SectionTitle 
-              text="Mis Estadísticas" 
-              color={themeColor}
-              align="left"
-              size="small"
-            />
-            <View style={styles.stats}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: themeColor }]}>12</Text>
-                <Text style={[styles.statLabel, { color: colors.gray }]}>Recetas probadas</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: themeColor }]}>{favorites.length}</Text>
-                <Text style={[styles.statLabel, { color: colors.gray }]}>Favoritas</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
         {isLoggedIn && favorites.length > 0 && (
           <View style={[styles.favoritesSection, { backgroundColor: colors.cardBg, borderColor: colors.border }]}>
             <SectionTitle 
@@ -300,7 +279,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Información adicional */}
         <View style={[styles.infoSection, { backgroundColor: colors.lightGray, borderColor: colors.border }]}>
           <Text style={[styles.infoTitle, { color: colors.primary }]}>
             Acerca de la aplicación
@@ -309,6 +287,7 @@ export default function ProfileScreen() {
             • Busca recetas por ingredientes que tengas en casa{'\n'}
             • Filtra por precio: bajo, medio o alto{'\n'}
             • Guarda tus recetas favoritas{'\n'}
+            • Modo de Ahorro
           </Text>
         </View>
       </ScrollView>
